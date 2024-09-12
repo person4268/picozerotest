@@ -34,7 +34,7 @@ cmake_policy(SET CMP0169 OLD)
 FetchContent_Declare(
   freertos_kernel
   GIT_REPOSITORY https://github.com/FreeRTOS/FreeRTOS-Kernel
-  GIT_TAG 310ace5dd0a7391124448d56a309e7e1b6926f10
+  GIT_TAG main # meh, idk why but using a sha didn't work on another machine
   GIT_SHALLOW TRUE
 )
 FetchContent_GetProperties(freertos_kernel)
