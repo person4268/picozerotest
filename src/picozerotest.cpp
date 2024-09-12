@@ -14,6 +14,7 @@
 #include "ssd1306_regs.h"
 #include <cmath>
 #include <cstring>
+#include "raspberry.h"
 
 #include "FreeRTOS.h"
 #include "FreeRTOS_CLI.h"
@@ -110,8 +111,8 @@ static BaseType_t prvBootromCommand(char* pcWriteBuffer, size_t xWriteBufferLen,
 
 static const CLI_Command_Definition_t xBootromCommand =
 {
-    "bootrom",
-    "bootrom: Reboot into bootrom\r\n",
+    "br",
+    "br: Reboot into bootrom\r\n",
     prvBootromCommand,
     0
 };
@@ -125,8 +126,8 @@ static BaseType_t prvResetCommand(char* pcWriteBuffer, size_t xWriteBufferLen, c
 
 static const CLI_Command_Definition_t xResetCommand =
 {
-    "reset",
-    "reset: Reset the device\r\n",
+    "r",
+    "r: Reset the device\r\n",
     prvResetCommand,
     0
 };
@@ -195,8 +196,7 @@ struct render_area {
     uint8_t end_col;
     uint8_t start_page;
     uint8_t end_page;
-
-    int buflen;
+    // area->buflen = (area->end_col - area->start_col + 1) * (area->end_page - area->start_page + 1);
 };
 
 void SSD1306_send_cmd(uint8_t cmd) {
@@ -210,7 +210,7 @@ void SSD1306_send_cmd(uint8_t cmd) {
 void SSD1306_send_buf(uint8_t buf[], int buflen) {
     // in horizontal addressing mode, the column address pointer auto-increments
     // and then wraps around to the next page, so we can send the entire frame
-    // buffer in one gooooooo!
+    // buffer in one gooooooo! EDIT: THE PAGE ADDRESS DOESNT GET AUTOINCREMENTED FOR THE SH1106
 
     // copy our frame buffer into a new buffer because we need to add the control byte
     // to the beginning
@@ -219,9 +219,9 @@ void SSD1306_send_buf(uint8_t buf[], int buflen) {
 
     temp_buf[0] = 0x40;
     memcpy(temp_buf+1, buf, buflen);
-    taskENTER_CRITICAL();
+    vTaskSuspendAll();
     i2c_write_blocking(i2c_default, SSD1306_I2C_ADDR, temp_buf, buflen + 1, false);
-    taskEXIT_CRITICAL();
+    xTaskResumeAll();
     free(temp_buf);
 }
 
@@ -230,28 +230,64 @@ void SSD1306_send_cmd_list(uint8_t *buf, int num) {
         SSD1306_send_cmd(buf[i]);
 }
 
-void SSD1306_calc_render_area_buflen(struct render_area *area) {
-    // calculate how long the flattened buffer will be for a render area
-    area->buflen = (area->end_col - area->start_col + 1) * (area->end_page - area->start_page + 1);
+void SSD1306_12864_to_13264_buf(uint8_t *in , uint8_t *out) {
+    // convert a 128x64 buffer to a 132x64 buffer
+    // we need to add 4 columns to the sides, then swap the left and right halves
+    memset(out, 0, SSD1306_BUF_LEN);
+    for (int i = 0; i < SSD1306_NUM_PAGES; i++) {
+        for (int j = 0; j < SSD1306_ACTUAL_WIDTH; j++) {
+            int in_idx = i * SSD1306_ACTUAL_WIDTH + j;
+            int out_idx = i * SSD1306_WIDTH + j + 4;
+            out[out_idx] = in[in_idx];
+        }
+    }
+
+    uint8_t* temp = (uint8_t*)malloc(SSD1306_BUF_LEN);
+    memcpy(temp, out, SSD1306_BUF_LEN);
+
+    // now we swap the left and right halves of out
+    for (int i = 0; i < SSD1306_NUM_PAGES; i++) {
+        for (int j = 0; j < SSD1306_WIDTH; j++) {
+            if (j < SSD1306_WIDTH / 2) {
+                out[i * SSD1306_WIDTH + j] = temp[i * SSD1306_WIDTH + j + SSD1306_WIDTH / 2];
+            } else {
+                out[i * SSD1306_WIDTH + j] = temp[i * SSD1306_WIDTH + j - SSD1306_WIDTH / 2];
+            }
+        }
+    }
+    
+    free(temp);
 }
 
-void SSD1306_render_buf(uint8_t *buf, struct render_area *area) {
-    // update a portion of the display with a render area
-    uint8_t cmds[] = {
-        SSD1306_SET_COL_ADDR,
-        area->start_col,
-        area->end_col,
-        SSD1306_SET_PAGE_ADDR,
-        area->start_page,
-        area->end_page
+void SSD1306_render_buf(uint8_t *buf) {
+    // update the whole of the display with a render area
+
+    uint8_t* disp_buf = (uint8_t*)malloc(SSD1306_BUF_LEN);
+    SSD1306_12864_to_13264_buf(buf, disp_buf);
+
+    struct render_area area = {
+        start_col: 0,
+        end_col : SSD1306_WIDTH - 1,
+        start_page : 0,
+        end_page : SSD1306_NUM_PAGES - 1
     };
 
-    SSD1306_send_cmd_list(cmds, count_of(cmds));
-    SSD1306_send_buf(buf, area->buflen);
+    const int BytesPerRow = area.end_col - area.start_col + 1;
+
+    for(int i = area.start_page; i <= area.end_page; i++) {
+        SSD1306_send_cmd(SSD1306_SET_COL_ADDR_LOW || (area.start_col & 0x0F));
+        SSD1306_send_cmd(SSD1306_SET_COL_ADDR_HIGH || ((area.start_col >> 4) & 0x0F));
+        SSD1306_send_cmd(SSD1306_SET_PAGE_ADDR | (i & 0x0F));
+        SSD1306_send_cmd(SSD1306_RMW_MODE); // increment column addr on write
+        SSD1306_send_buf(disp_buf + (i * BytesPerRow), BytesPerRow); // ugh, send a row at once
+        SSD1306_send_cmd(SSD1306_END_RMW); // end read modify write
+    }
+
+    free(disp_buf);
 }
 
-void SSD1306_set_pixel(uint8_t *buf, int x,int y, bool on) {
-    assert(x >= 0 && x < SSD1306_WIDTH && y >=0 && y < SSD1306_HEIGHT);
+void SSD1306_set_pixel(uint8_t *buf, int x, int y, bool on) {
+    assert(x >= 0 && x < SSD1306_ACTUAL_WIDTH && y >=0 && y < SSD1306_HEIGHT);
 
     // The calculation to determine the correct bit to set depends on which address
     // mode we are in. This code assumes horizontal
@@ -263,7 +299,7 @@ void SSD1306_set_pixel(uint8_t *buf, int x,int y, bool on) {
     // This code could be optimised, but is like this for clarity. The compiler
     // should do a half decent job optimising it anyway.
 
-    const int BytesPerRow = SSD1306_WIDTH ; // x pixels, 1bpp, but each row is 8 pixel high, so (x / 8) * 8
+    const int BytesPerRow = SSD1306_ACTUAL_WIDTH ; // x pixels, 1bpp, but each row is 8 pixel high, so (x / 8) * 8
 
     int byte_idx = (y / 8) * BytesPerRow + x;
     uint8_t byte = buf[byte_idx];
@@ -276,8 +312,19 @@ void SSD1306_set_pixel(uint8_t *buf, int x,int y, bool on) {
     buf[byte_idx] = byte;
 }
 
+void SSD1306_blit_data(uint8_t* buf, struct render_area* source_area, uint8_t* data, int dest_col, int dest_page) {
+    int width_cols = source_area->end_col - source_area->start_col + 1;
+    for(int i = 0; i < source_area->end_page - source_area->start_page + 1; i++) {
+        for(int j = 0; j < width_cols; j++) {
+            int source_idx = i * width_cols + j;
+            int dest_idx = (dest_page + i) * SSD1306_ACTUAL_WIDTH + dest_col + j;
+            buf[dest_idx] = data[source_idx];
+        }
+    }
+}
+
 void run_oled_display(__unused void* params) {
-    taskENTER_CRITICAL();
+    vTaskSuspendAll();
     i2c_init(SSD1306_I2C, SSD1306_I2C_FREQ);
     gpio_set_function(SSD1306_I2C_SDA_PIN, GPIO_FUNC_I2C);
     gpio_set_function(SSD1306_I2C_SCL_PIN, GPIO_FUNC_I2C);
@@ -289,9 +336,9 @@ void run_oled_display(__unused void* params) {
         SSD1306_SET_DISP, // Turn display off
         SSD1306_SET_MEM_MODE, 0x00, // Horizontal addressing mode
         SSD1306_SET_DISP_START_LINE | 0x00, // Start line
-        SSD1306_SET_SEG_REMAP | 0x01, // Segment remap
-        SSD1306_SET_MUX_RATIO, 64 - 1, // 64 COM lines
-        SSD1306_SET_COM_OUT_DIR_FLIP, // Scan from COM[N-1] to COM0
+        SSD1306_SET_SEG_REMAP, // Segment remap
+        SSD1306_SET_MUX_RATIO, 64 -1, // 64 COM lines
+        SSD1306_SET_COM_OUT_DIR_FLIP | 0x01, // Scan from COM[N-1] to COM0
         SSD1306_SET_DISP_OFFSET, 0x00, // 0 offset
         SSD1306_SET_COM_PIN_CFG, 0x12, // Sequential COM pin config, experiment with this if it doesn't work
         SSD1306_SET_DISP_CLK_DIV, 0x80, // Set clock divide ratio/oscillator frequency
@@ -307,34 +354,44 @@ void run_oled_display(__unused void* params) {
 
     SSD1306_send_cmd_list(commands, count_of(commands));
     
-    taskEXIT_CRITICAL();
+    xTaskResumeAll();
 
-    struct render_area frame_area = {
-        start_col: 0,
-        end_col : SSD1306_WIDTH - 1,
-        start_page : 0,
-        end_page : SSD1306_NUM_PAGES - 1
-    };
+    vTaskDelay(1000);
 
-    SSD1306_calc_render_area_buflen(&frame_area);
-
-    uint8_t buf[SSD1306_BUF_LEN];
-    memset(buf, 0, SSD1306_BUF_LEN);
-    SSD1306_render_buf(buf, &frame_area);
+    uint8_t buf[SSD1306_ACTUAL_BUF_LEN] = {0};
 
     // intro sequence: flash the screen 3 times
     for (int i = 0; i < 3; i++) {
         SSD1306_send_cmd(SSD1306_SET_ALL_ON);    // Set all pixels on
-        vTaskDelay(500);
+        vTaskDelay(100);
         SSD1306_send_cmd(SSD1306_SET_ENTIRE_ON); // go back to following RAM for pixel state
-        vTaskDelay(500);
+        vTaskDelay(100);
     }
 
     int i = 0;
     while(1) {
-        // printf("Hello World! %u\n", i);
+        printf("Hello World! %u\n", i);
+        //checkerboard pattern
+        for(int i = 0; i < SSD1306_ACTUAL_BUF_LEN; i++) {
+            // buf[i] = i % 2 == 0 ? 0b10101010 : 0b01010101;
+            buf[i] = 0x00;
+        }
+        // buf[SSD1306_BUF_LEN-i-1] = 0b11000000;
+        buf[SSD1306_ACTUAL_BUF_LEN-i-1] = 0xFF;
+
+        struct render_area area = {
+            start_col: 0,
+            end_col: 26-1,
+            start_page: 0,
+            end_page: (32 / SSD1306_PAGE_HEIGHT) - 1
+        };
+
+        SSD1306_blit_data(buf, &area, raspberry26x32, 0, 0);
+
+        SSD1306_render_buf(buf);
         i++;
-        vTaskDelay(1000);
+        if(i >= SSD1306_ACTUAL_BUF_LEN) i = 0;
+        vTaskDelay(200);
     }
 }
 

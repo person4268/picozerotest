@@ -7,12 +7,14 @@
 #define SSD1306_I2C_FREQ 400000
 
 #define SSD1306_WIDTH 132
+#define SSD1306_ACTUAL_WIDTH 128
 #define SSD1306_HEIGHT 64
 
 // commands (see datasheet)
 #define SSD1306_SET_MEM_MODE        _u(0x20)
-#define SSD1306_SET_COL_ADDR        _u(0x21)
-#define SSD1306_SET_PAGE_ADDR       _u(0x22)
+#define SSD1306_SET_COL_ADDR_LOW    _u(0x00)
+#define SSD1306_SET_COL_ADDR_HIGH   _u(0x10)
+#define SSD1306_SET_PAGE_ADDR       _u(0xB0)
 #define SSD1306_SET_HORIZ_SCROLL    _u(0x26)
 #define SSD1306_SET_SCROLL          _u(0x2E)
 
@@ -40,6 +42,7 @@
 #define SSD1306_PAGE_HEIGHT         _u(8)
 #define SSD1306_NUM_PAGES           (SSD1306_HEIGHT / SSD1306_PAGE_HEIGHT)
 #define SSD1306_BUF_LEN             (SSD1306_NUM_PAGES * SSD1306_WIDTH)
+#define SSD1306_ACTUAL_BUF_LEN      (SSD1306_NUM_PAGES * SSD1306_ACTUAL_WIDTH)
 
-#define SSD1306_WRITE_MODE         _u(0xFE)
-#define SSD1306_READ_MODE          _u(0xFF)
+#define SSD1306_RMW_MODE           _u(0xE0)
+#define SSD1306_END_RMW            _u(0xEE)
