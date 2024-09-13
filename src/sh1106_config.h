@@ -10,6 +10,7 @@
 #define SH1106_MIDDLE_FLIP 1
 
 // commands (see datasheet)
+// mostly taken from the ssd1306 datasheet with the completely wrong ones changed
 #define SH1106_SET_MEM_MODE        _u(0x20)
 #define SH1106_SET_COL_ADDR_LOW    _u(0x00)
 #define SH1106_SET_COL_ADDR_HIGH   _u(0x10)

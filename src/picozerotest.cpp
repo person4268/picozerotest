@@ -1,25 +1,19 @@
-#include <stdio.h>
-#include "pico/stdlib.h"
-#include "pico/malloc.h"
-#include "pico/mem_ops.h"
-#include "pico/bootrom.h"
-#include "hardware/gpio.h"
-#include "hardware/i2c.h"
-#include "hardware/sync.h"
-#include "hardware/structs/ioqspi.h"
-#include "hardware/structs/sio.h"
-#include "hardware/watchdog.h"
-#include "hardware/clocks.h"
-#include "ws2812.pio.h"
-#include "sh1106.h"
-#include "disp_config.h"
 #include <cmath>
+#include <cstdio>
 #include <cstring>
-#include "raspberry.h"
+
+#include "pico/stdlib.h"
+#include "pico/bootrom.h"
+#include "hardware/watchdog.h"
 
 #include "FreeRTOS.h"
 #include "FreeRTOS_CLI.h"
 #include "task.h"
+
+#include "raspberry.h"
+#include "sh1106.h"
+#include "ws2812.pio.h"
+#include "disp_config.h"
 
 static inline void put_pixel(uint32_t pixel_grb) {
     pio_sm_put_blocking(pio0, 0, pixel_grb << 8u);
