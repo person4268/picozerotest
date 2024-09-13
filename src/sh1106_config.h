@@ -1,14 +1,13 @@
 #pragma once
-#define SH1106_I2C (&i2c0_inst)
-#define SH1106_I2C_SDA_PIN 4
-#define SH1106_I2C_SCL_PIN 5
 
-#define SH1106_I2C_ADDR 0x3C
-#define SH1106_I2C_FREQ 400000
 
 #define SH1106_WIDTH 132
-#define SH1106_ACTUAL_WIDTH 128
 #define SH1106_HEIGHT 64
+
+// One weird display I have needs have the left and right sides swapped.
+// I don't know if that's an issue with my particular display or if it's all SH1106es,
+// or if I messed something up.
+#define SH1106_MIDDLE_FLIP 1
 
 // commands (see datasheet)
 #define SH1106_SET_MEM_MODE        _u(0x20)
@@ -42,7 +41,6 @@
 #define SH1106_PAGE_HEIGHT         _u(8)
 #define SH1106_NUM_PAGES           (SH1106_HEIGHT / SH1106_PAGE_HEIGHT)
 #define SH1106_BUF_LEN             (SH1106_NUM_PAGES * SH1106_WIDTH)
-#define SH1106_ACTUAL_BUF_LEN      (SH1106_NUM_PAGES * SH1106_ACTUAL_WIDTH)
 
 #define SH1106_RMW_MODE           _u(0xE0)
 #define SH1106_END_RMW            _u(0xEE)

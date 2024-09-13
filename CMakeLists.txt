@@ -48,7 +48,7 @@ include(${CMAKE_CURRENT_LIST_DIR}/FreeRTOS_Kernel_import.cmake)
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(picozerotest FreeRTOS-Plus-CLI/FreeRTOS_CLI.c src/picozerotest.cpp )
+add_executable(picozerotest FreeRTOS-Plus-CLI/FreeRTOS_CLI.c src/sh1106.cpp src/picozerotest.cpp )
 
 pico_set_program_name(picozerotest "picozerotest")
 pico_set_program_version(picozerotest "0.1")
