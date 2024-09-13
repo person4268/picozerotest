@@ -11,7 +11,7 @@
 #include "hardware/watchdog.h"
 #include "hardware/clocks.h"
 #include "ws2812.pio.h"
-#include "sh1106_regs.h"
+#include "sh1106_config.h"
 #include <cmath>
 #include <cstring>
 #include "raspberry.h"
@@ -204,7 +204,7 @@ void sh1106_send_cmd(uint8_t cmd) {
     // this "data" can be a command or data to follow up a command
     // Co = 1, D/C = 0 => the driver expects a command
     uint8_t buf[2] = {0x80, cmd};
-    i2c_write_blocking(i2c_default, sh1106_I2C_ADDR, buf, 2, false);
+    i2c_write_blocking(i2c_default, SH1106_I2C_ADDR, buf, 2, false);
 }
 
 void sh1106_send_buf(uint8_t buf[], int buflen) {
@@ -220,7 +220,7 @@ void sh1106_send_buf(uint8_t buf[], int buflen) {
     temp_buf[0] = 0x40;
     memcpy(temp_buf+1, buf, buflen);
     vTaskSuspendAll();
-    i2c_write_blocking(i2c_default, sh1106_I2C_ADDR, temp_buf, buflen + 1, false);
+    i2c_write_blocking(i2c_default, SH1106_I2C_ADDR, temp_buf, buflen + 1, false);
     xTaskResumeAll();
     free(temp_buf);
 }
@@ -233,25 +233,25 @@ void sh1106_send_cmd_list(uint8_t *buf, int num) {
 void sh1106_12864_to_13264_buf(uint8_t *in , uint8_t *out) {
     // convert a 128x64 buffer to a 132x64 buffer
     // we need to add 4 columns to the sides, then swap the left and right halves
-    memset(out, 0, sh1106_BUF_LEN);
-    for (int i = 0; i < sh1106_NUM_PAGES; i++) {
-        for (int j = 0; j < sh1106_ACTUAL_WIDTH; j++) {
-            int in_idx = i * sh1106_ACTUAL_WIDTH + j;
-            int out_idx = i * sh1106_WIDTH + j + 4;
+    memset(out, 0, SH1106_BUF_LEN);
+    for (int i = 0; i < SH1106_NUM_PAGES; i++) {
+        for (int j = 0; j < SH1106_ACTUAL_WIDTH; j++) {
+            int in_idx = i * SH1106_ACTUAL_WIDTH + j;
+            int out_idx = i * SH1106_WIDTH + j + 4;
             out[out_idx] = in[in_idx];
         }
     }
 
-    uint8_t* temp = (uint8_t*)malloc(sh1106_BUF_LEN);
-    memcpy(temp, out, sh1106_BUF_LEN);
+    uint8_t* temp = (uint8_t*)malloc(SH1106_BUF_LEN);
+    memcpy(temp, out, SH1106_BUF_LEN);
 
     // now we swap the left and right halves of out
-    for (int i = 0; i < sh1106_NUM_PAGES; i++) {
-        for (int j = 0; j < sh1106_WIDTH; j++) {
-            if (j < sh1106_WIDTH / 2) {
-                out[i * sh1106_WIDTH + j] = temp[i * sh1106_WIDTH + j + sh1106_WIDTH / 2];
+    for (int i = 0; i < SH1106_NUM_PAGES; i++) {
+        for (int j = 0; j < SH1106_WIDTH; j++) {
+            if (j < SH1106_WIDTH / 2) {
+                out[i * SH1106_WIDTH + j] = temp[i * SH1106_WIDTH + j + SH1106_WIDTH / 2];
             } else {
-                out[i * sh1106_WIDTH + j] = temp[i * sh1106_WIDTH + j - sh1106_WIDTH / 2];
+                out[i * SH1106_WIDTH + j] = temp[i * SH1106_WIDTH + j - SH1106_WIDTH / 2];
             }
         }
     }
@@ -262,32 +262,32 @@ void sh1106_12864_to_13264_buf(uint8_t *in , uint8_t *out) {
 void sh1106_render_buf(uint8_t *buf) {
     // update the whole of the display with a render area
 
-    uint8_t* disp_buf = (uint8_t*)malloc(sh1106_BUF_LEN);
+    uint8_t* disp_buf = (uint8_t*)malloc(SH1106_BUF_LEN);
     sh1106_12864_to_13264_buf(buf, disp_buf);
 
     struct render_area area = {
         start_col: 0,
-        end_col : sh1106_WIDTH - 1,
+        end_col : SH1106_WIDTH - 1,
         start_page : 0,
-        end_page : sh1106_NUM_PAGES - 1
+        end_page : SH1106_NUM_PAGES - 1
     };
 
     const int BytesPerRow = area.end_col - area.start_col + 1;
 
     for(int i = area.start_page; i <= area.end_page; i++) {
-        sh1106_send_cmd(sh1106_SET_COL_ADDR_LOW || (area.start_col & 0x0F));
-        sh1106_send_cmd(sh1106_SET_COL_ADDR_HIGH || ((area.start_col >> 4) & 0x0F));
-        sh1106_send_cmd(sh1106_SET_PAGE_ADDR | (i & 0x0F));
-        sh1106_send_cmd(sh1106_RMW_MODE); // increment column addr on write
+        sh1106_send_cmd(SH1106_SET_COL_ADDR_LOW || (area.start_col & 0x0F));
+        sh1106_send_cmd(SH1106_SET_COL_ADDR_HIGH || ((area.start_col >> 4) & 0x0F));
+        sh1106_send_cmd(SH1106_SET_PAGE_ADDR | (i & 0x0F));
+        sh1106_send_cmd(SH1106_RMW_MODE); // increment column addr on write
         sh1106_send_buf(disp_buf + (i * BytesPerRow), BytesPerRow); // ugh, send a row at once
-        sh1106_send_cmd(sh1106_END_RMW); // end read modify write
+        sh1106_send_cmd(SH1106_END_RMW); // end read modify write
     }
 
     free(disp_buf);
 }
 
 void sh1106_set_pixel(uint8_t *buf, int x, int y, bool on) {
-    assert(x >= 0 && x < sh1106_ACTUAL_WIDTH && y >=0 && y < sh1106_HEIGHT);
+    assert(x >= 0 && x < SH1106_ACTUAL_WIDTH && y >=0 && y < sh1106_HEIGHT);
 
     // The calculation to determine the correct bit to set depends on which address
     // mode we are in. This code assumes horizontal
@@ -299,7 +299,7 @@ void sh1106_set_pixel(uint8_t *buf, int x, int y, bool on) {
     // This code could be optimised, but is like this for clarity. The compiler
     // should do a half decent job optimising it anyway.
 
-    const int BytesPerRow = sh1106_ACTUAL_WIDTH ; // x pixels, 1bpp, but each row is 8 pixel high, so (x / 8) * 8
+    const int BytesPerRow = SH1106_ACTUAL_WIDTH ; // x pixels, 1bpp, but each row is 8 pixel high, so (x / 8) * 8
 
     int byte_idx = (y / 8) * BytesPerRow + x;
     uint8_t byte = buf[byte_idx];
@@ -317,7 +317,7 @@ void sh1106_blit_data(uint8_t* buf, struct render_area* source_area, uint8_t* da
     for(int i = 0; i < source_area->end_page - source_area->start_page + 1; i++) {
         for(int j = 0; j < width_cols; j++) {
             int source_idx = i * width_cols + j;
-            int dest_idx = (dest_page + i) * sh1106_ACTUAL_WIDTH + dest_col + j;
+            int dest_idx = (dest_page + i) * SH1106_ACTUAL_WIDTH + dest_col + j;
             buf[dest_idx] = data[source_idx];
         }
     }
@@ -325,31 +325,31 @@ void sh1106_blit_data(uint8_t* buf, struct render_area* source_area, uint8_t* da
 
 void run_oled_display(__unused void* params) {
     vTaskSuspendAll();
-    i2c_init(sh1106_I2C, sh1106_I2C_FREQ);
-    gpio_set_function(sh1106_I2C_SDA_PIN, GPIO_FUNC_I2C);
-    gpio_set_function(sh1106_I2C_SCL_PIN, GPIO_FUNC_I2C);
-    gpio_pull_up(sh1106_I2C_SDA_PIN);
-    gpio_pull_up(sh1106_I2C_SCL_PIN);
+    i2c_init(SH1106_I2C, SH1106_I2C_FREQ);
+    gpio_set_function(SH1106_I2C_SDA_PIN, GPIO_FUNC_I2C);
+    gpio_set_function(SH1106_I2C_SCL_PIN, GPIO_FUNC_I2C);
+    gpio_pull_up(SH1106_I2C_SDA_PIN);
+    gpio_pull_up(SH1106_I2C_SCL_PIN);
 
     // Init sequence
     uint8_t commands[] = {
-        sh1106_SET_DISP, // Turn display off
-        sh1106_SET_MEM_MODE, 0x00, // Horizontal addressing mode
-        sh1106_SET_DISP_START_LINE | 0x00, // Start line
-        sh1106_SET_SEG_REMAP, // Segment remap
-        sh1106_SET_MUX_RATIO, 64 -1, // 64 COM lines
-        sh1106_SET_COM_OUT_DIR_FLIP | 0x01, // Scan from COM[N-1] to COM0
-        sh1106_SET_DISP_OFFSET, 0x00, // 0 offset
-        sh1106_SET_COM_PIN_CFG, 0x12, // Sequential COM pin config, experiment with this if it doesn't work
-        sh1106_SET_DISP_CLK_DIV, 0x80, // Set clock divide ratio/oscillator frequency
-        sh1106_SET_PRECHARGE, 0xF1, // Set pre-charge period
-        sh1106_SET_VCOM_DESEL, 0x30, // Set VCOMH deselect level
-        sh1106_SET_CONTRAST, 0xFF, // Set contrast
-        sh1106_SET_ENTIRE_ON, // Set entire display on
-        sh1106_SET_NORM_DISP, // Set normal display
-        sh1106_SET_CHARGE_PUMP, 0x14, // Enable charge pump
-        sh1106_SET_SCROLL | 0x00, // Disable scroll
-        sh1106_SET_DISP | 0x01, // Turn display on
+        SH1106_SET_DISP, // Turn display off
+        SH1106_SET_MEM_MODE, 0x00, // Horizontal addressing mode
+        SH1106_SET_DISP_START_LINE | 0x00, // Start line
+        SH1106_SET_SEG_REMAP, // Segment remap
+        SH1106_SET_MUX_RATIO, 64 -1, // 64 COM lines
+        SH1106_SET_COM_OUT_DIR_FLIP | 0x01, // Scan from COM[N-1] to COM0
+        SH1106_SET_DISP_OFFSET, 0x00, // 0 offset
+        SH1106_SET_COM_PIN_CFG, 0x12, // Sequential COM pin config, experiment with this if it doesn't work
+        SH1106_SET_DISP_CLK_DIV, 0x80, // Set clock divide ratio/oscillator frequency
+        SH1106_SET_PRECHARGE, 0xF1, // Set pre-charge period
+        SH1106_SET_VCOM_DESEL, 0x30, // Set VCOMH deselect level
+        SH1106_SET_CONTRAST, 0xFF, // Set contrast
+        SH1106_SET_ENTIRE_ON, // Set entire display on
+        SH1106_SET_NORM_DISP, // Set normal display
+        SH1106_SET_CHARGE_PUMP, 0x14, // Enable charge pump
+        SH1106_SET_SCROLL | 0x00, // Disable scroll
+        SH1106_SET_DISP | 0x01, // Turn display on
     };
 
     sh1106_send_cmd_list(commands, count_of(commands));
@@ -358,13 +358,13 @@ void run_oled_display(__unused void* params) {
 
     vTaskDelay(1000);
 
-    uint8_t buf[sh1106_ACTUAL_BUF_LEN] = {0};
+    uint8_t buf[SH1106_ACTUAL_BUF_LEN] = {0};
 
     // intro sequence: flash the screen 3 times
     for (int i = 0; i < 3; i++) {
-        sh1106_send_cmd(sh1106_SET_ALL_ON);    // Set all pixels on
+        sh1106_send_cmd(SH1106_SET_ALL_ON);    // Set all pixels on
         vTaskDelay(100);
-        sh1106_send_cmd(sh1106_SET_ENTIRE_ON); // go back to following RAM for pixel state
+        sh1106_send_cmd(SH1106_SET_ENTIRE_ON); // go back to following RAM for pixel state
         vTaskDelay(100);
     }
 
@@ -372,25 +372,25 @@ void run_oled_display(__unused void* params) {
     while(1) {
         printf("Hello World! %u\n", i);
         //checkerboard pattern
-        for(int i = 0; i < sh1106_ACTUAL_BUF_LEN; i++) {
+        for(int i = 0; i < SH1106_ACTUAL_BUF_LEN; i++) {
             // buf[i] = i % 2 == 0 ? 0b10101010 : 0b01010101;
             buf[i] = 0x00;
         }
-        // buf[sh1106_BUF_LEN-i-1] = 0b11000000;
-        buf[sh1106_ACTUAL_BUF_LEN-i-1] = 0xFF;
+        // buf[SH1106_BUF_LEN-i-1] = 0b11000000;
+        buf[SH1106_ACTUAL_BUF_LEN-i-1] = 0xFF;
 
         struct render_area area = {
             start_col: 0,
             end_col: 26-1,
             start_page: 0,
-            end_page: (32 / sh1106_PAGE_HEIGHT) - 1
+            end_page: (32 / SH1106_PAGE_HEIGHT) - 1
         };
 
         sh1106_blit_data(buf, &area, raspberry26x32, 0, 0);
 
         sh1106_render_buf(buf);
         i++;
-        if(i >= sh1106_ACTUAL_BUF_LEN) i = 0;
+        if(i >= SH1106_ACTUAL_BUF_LEN) i = 0;
         vTaskDelay(200);
     }
 }
