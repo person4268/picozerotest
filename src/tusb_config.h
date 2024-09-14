@@ -31,6 +31,7 @@
  extern "C" {
 #endif
 
+#define PICO_STDIO_USB_ENABLE_RESET_VIA_VENDOR_INTERFACE 1
 #include "pico/stdio_usb.h"
 
 // Enable Device stack

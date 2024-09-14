@@ -261,7 +261,8 @@ int main()
     xTaskCreate(run_oled_display, "Oled Disp", 2048, NULL, 1, &task_handle_oled_display);
     xTaskCreate(tinyusb_task, "TinyUSB", 2048, NULL, 1, &task_handle_tinyusb);
     vTaskCoreAffinitySet(task_handle_main_task, 1);
+    vTaskCoreAffinitySet(task_handle_tinyusb, 1);
     // vTaskCoreAffinitySet(task_handle_ws2812, 1);
-    vTaskCoreAffinitySet(task_handle_oled_display, 1);
+    vTaskCoreAffinitySet(task_handle_oled_display, 0x01);
     vTaskStartScheduler();
 }
