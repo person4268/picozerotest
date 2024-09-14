@@ -16,6 +16,9 @@
 #include "ws2812.pio.h"
 #include "disp_config.h"
 
+#include "bsp/board_api.h"
+#include "tusb.h"
+
 static inline void put_pixel(uint32_t pixel_grb) {
     pio_sm_put_blocking(pio0, 0, pixel_grb << 8u);
 }
@@ -212,23 +215,23 @@ void run_oled_display(__unused void* params) {
         // buf[SH1106_BUF_LEN-i-1] = 0b11000000;
         buf[DISP_BUF_LEN-i-1] = 0xFF;
 
-        // struct render_area area = {
-        //     start_col: 0,
-        //     end_col: 26-1,
-        //     start_page: 0,
-        //     end_page: (32 / DISP_PAGE_HEIGHT) - 1
-        // };
-
-        // sh1106_blit_data(buf, &area, raspberry26x32, 0, 0);
-
         struct render_area area = {
             start_col: 0,
-            end_col: 128-1,
+            end_col: 26-1,
             start_page: 0,
-            end_page: (64 / DISP_PAGE_HEIGHT) - 1
+            end_page: (32 / DISP_PAGE_HEIGHT) - 1
         };
 
-        sh1106_blit_data(buf, &area, testimg2, 0, 0);
+        sh1106_blit_data(buf, &area, raspberry, 0, 0);
+
+        // struct render_area area = {
+        //     start_col: 0,
+        //     end_col: 128-1,
+        //     start_page: 0,
+        //     end_page: (64 / DISP_PAGE_HEIGHT) - 1
+        // };
+
+        // sh1106_blit_data(buf, &area, testimg2, 0, 0);
 
         sh1106_render_buf(buf);
         i++;
@@ -237,16 +240,26 @@ void run_oled_display(__unused void* params) {
     }
 }
 
+void tinyusb_task(__unused void* params) {
+    while(1) {
+        tud_task();
+    }
+}
+
 int main()
 {
+    board_init();
+    tusb_init();
     stdio_init_all();
 
     TaskHandle_t task_handle_main_task = NULL;
     // TaskHandle_t task_handle_ws2812 = NULL;
     TaskHandle_t task_handle_oled_display = NULL;
+    TaskHandle_t task_handle_tinyusb = NULL;
     xTaskCreate(main_task, "Main Task", 2048, NULL, 1, &task_handle_main_task);
     // xTaskCreate(runws2812, "run the ws2812 led lmao", 2048, NULL, 1, &task_handle_ws2812);
     xTaskCreate(run_oled_display, "Oled Disp", 2048, NULL, 1, &task_handle_oled_display);
+    xTaskCreate(tinyusb_task, "TinyUSB", 2048, NULL, 1, &task_handle_tinyusb);
     vTaskCoreAffinitySet(task_handle_main_task, 1);
     // vTaskCoreAffinitySet(task_handle_ws2812, 1);
     vTaskCoreAffinitySet(task_handle_oled_display, 1);

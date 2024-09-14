@@ -27,6 +27,8 @@ include(pico_sdk_import.cmake)
 
 project(picozerotest C CXX ASM)
 
+set(FAMILY rp2040)
+
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
@@ -50,7 +52,11 @@ include(${CMAKE_CURRENT_LIST_DIR}/FreeRTOS_Kernel_import.cmake)
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(picozerotest FreeRTOS-Plus-CLI/FreeRTOS_CLI.c src/sh1106.cpp src/picozerotest.cpp )
+add_executable(picozerotest
+  FreeRTOS-Plus-CLI/FreeRTOS_CLI.c
+  src/sh1106.cpp 
+  src/picozerotest.cpp
+  src/usb_descriptors.c )
 
 pico_set_program_name(picozerotest "picozerotest")
 pico_set_program_version(picozerotest "0.1")
@@ -78,7 +84,8 @@ target_include_directories(picozerotest PRIVATE
 
 # Add any user requested libraries
 target_link_libraries(picozerotest
-        pico_stdlib pico_malloc pico_mem_ops
+        pico_stdlib pico_malloc pico_mem_ops pico_unique_id
+        tinyusb_device tinyusb_board
         hardware_spi
         hardware_i2c
         hardware_dma
@@ -150,11 +157,6 @@ if(IMAGES_CHANGED)
     )
     add_custom_target(run_cleanup DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/.cleanup_dummy)
     add_dependencies(picozerotest run_cleanup)
-else()
-    add_custom_command(
-        COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_BINARY_DIR}/.cleanup_dummy
-        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/.cleanup_dummy
-    )
 endif()
 
 # Create the custom target to generate all headers
