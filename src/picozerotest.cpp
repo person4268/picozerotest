@@ -11,6 +11,7 @@
 #include "task.h"
 
 #include "src/generated/raspberry.h"
+#include "src/generated/testimg1.h"
 #include "src/generated/testimg2.h"
 #include "sh1106.h"
 #include "ws2812.pio.h"
@@ -204,7 +205,7 @@ void run_oled_display(__unused void* params) {
         vTaskDelay(100);
     }
 
-    int i = 0;
+    uint8_t i = 0;
     while(1) {
         printf("Hello World! %u\n", i);
         //checkerboard pattern
@@ -213,29 +214,30 @@ void run_oled_display(__unused void* params) {
             buf[i] = 0x00;
         }
         // buf[SH1106_BUF_LEN-i-1] = 0b11000000;
-        buf[DISP_BUF_LEN-i-1] = 0xFF;
-
-        struct render_area area = {
-            start_col: 0,
-            end_col: 26-1,
-            start_page: 0,
-            end_page: (32 / DISP_PAGE_HEIGHT) - 1
-        };
-
-        sh1106_blit_data(buf, &area, raspberry, 0, 0);
+        // buf[DISP_BUF_LEN-i-1] = 0xFF;
 
         // struct render_area area = {
         //     start_col: 0,
-        //     end_col: 128-1,
+        //     end_col: 26-1,
         //     start_page: 0,
-        //     end_page: (64 / DISP_PAGE_HEIGHT) - 1
+        //     end_page: (32 / DISP_PAGE_HEIGHT) - 1
         // };
 
-        // sh1106_blit_data(buf, &area, testimg2, 0, 0);
+        // sh1106_blit_data(buf, &area, raspberry, 0, 0);
+
+        struct render_area area = {
+            start_col: 0,
+            end_col: 128-1,
+            start_page: 0 + i,
+            end_page: (uint8_t)(64 / DISP_PAGE_HEIGHT) - 1 + i
+        };
+
+        sh1106_blit_data(buf, &area, testimg1, 0, 0);
 
         sh1106_render_buf(buf);
         i++;
-        if(i >= DISP_BUF_LEN) i = 0;
+        // if(i >= DISP_BUF_LEN) i = 0;
+        if (i >= (TESTIMG1_HEIGHT / DISP_PAGE_HEIGHT) - DISP_PAGE_HEIGHT) i = 0;
         vTaskDelay(200);
     }
 }

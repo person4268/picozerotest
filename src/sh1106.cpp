@@ -194,7 +194,7 @@ void sh1106_blit_data(uint8_t* buf, struct render_area* source_area, uint8_t* da
     int width_cols = source_area->end_col - source_area->start_col + 1;
     for(int i = 0; i < source_area->end_page - source_area->start_page + 1; i++) {
         for(int j = 0; j < width_cols; j++) {
-            int source_idx = i * width_cols + j;
+            int source_idx = (i + source_area->start_page) * width_cols + j + source_area->start_col;
             int dest_idx = (dest_page + i) * DISP_WIDTH + dest_col + j;
             buf[dest_idx] = data[source_idx];
         }

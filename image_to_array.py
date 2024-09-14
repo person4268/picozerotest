@@ -33,7 +33,8 @@ except OSError:
 img_width = im.size[0]
 img_height = im.size[1]
 
-if img_width > OLED_WIDTH or img_height > OLED_HEIGHT:
+# if img_width > OLED_WIDTH or img_height > OLED_HEIGHT:
+if img_width > OLED_WIDTH:
     print(f'Your image is f{img_width} pixels wide and {img_height} pixels high, but...')
     raise Exception(f"OLED display only {OLED_WIDTH} pixels wide and {OLED_HEIGHT} pixels high!")
 
@@ -80,6 +81,6 @@ buffer = ", ".join(buffer)
 buffer_hex = f'static uint8_t {img_name}[] = {{{buffer}}};\n'
 
 with open(out_path, 'wt') as file:
-    file.write(f'// #define IMG_WIDTH {img_width}\n')
-    file.write(f'// #define IMG_HEIGHT {img_height}\n\n')
+    file.write(f'#define {img_name.upper()}_WIDTH {img_width}\n')
+    file.write(f'#define {img_name.upper()}_HEIGHT {img_height}\n\n')
     file.write(buffer_hex)
