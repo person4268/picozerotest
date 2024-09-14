@@ -8,6 +8,8 @@
 // I don't know if that's an issue with my particular display or if it's all SH1106es,
 // or if I messed something up.
 #define SH1106_MIDDLE_FLIP 1
+// idk in case your display is upside down
+#define SH1106_VERTICAL_FLIP 1 
 
 // commands (see datasheet)
 // mostly taken from the ssd1306 datasheet with the completely wrong ones changed

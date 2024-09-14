@@ -84,22 +84,44 @@ void sh1106_set_all_white(bool on) {
     sh1106_send_cmd(on ? SH1106_SET_ALL_ON : SH1106_SET_ENTIRE_ON);
 }
 
+inline uint8_t reverse_bits(uint8_t byte) {
+    byte = (byte & 0xF0) >> 4 | (byte & 0x0F) << 4;
+    byte = (byte & 0xCC) >> 2 | (byte & 0x33) << 2;
+    byte = (byte & 0xAA) >> 1 | (byte & 0x55) << 1;
+    return byte;
+}
+
 void sh1106_12864_to_13264_buf(uint8_t *in , uint8_t *out) {
     // convert a 128x64 buffer to a 132x64 buffer
+
+    uint8_t* disp_flipped = (uint8_t*)malloc(DISP_BUF_LEN);
+    memcpy(disp_flipped, in, DISP_BUF_LEN);
+
+#ifdef SH1106_VERTICAL_FLIP
+    // now we flip the display vertically
+    for (int i = 0; i < DISP_NUM_PAGES; i++) {
+        for (int j = 0; j < DISP_WIDTH; j++) {
+            // each page too needs to be flipped (have bit order reversed)
+            disp_flipped[i * DISP_WIDTH + j] = reverse_bits(in[(DISP_NUM_PAGES - i - 1) * DISP_WIDTH + (DISP_WIDTH - j - 1)]);
+        }
+    }
+#endif
+
     // we need to add 4 columns to the sides, then swap the left and right halves
     memset(out, 0, SH1106_BUF_LEN);
     for (int i = 0; i < SH1106_NUM_PAGES; i++) {
         for (int j = 0; j < DISP_WIDTH; j++) {
             int in_idx = i * DISP_WIDTH + j;
-            int out_idx = i * SH1106_WIDTH + j + 4;
-            out[out_idx] = in[in_idx];
+            int out_idx = i * SH1106_WIDTH + j + 4 - 1; // idk exactly why -1 precisely but it makes it work so who cares
+            out[out_idx] = disp_flipped[in_idx];
         }
     }
 
-#ifdef SH1106_MIDDLE_FLIP
+    free(disp_flipped);
     uint8_t* temp = (uint8_t*)malloc(SH1106_BUF_LEN);
     memcpy(temp, out, SH1106_BUF_LEN);
 
+#ifdef SH1106_MIDDLE_FLIP
     // now we swap the left and right halves of out
     for (int i = 0; i < SH1106_NUM_PAGES; i++) {
         for (int j = 0; j < SH1106_WIDTH; j++) {
@@ -110,9 +132,9 @@ void sh1106_12864_to_13264_buf(uint8_t *in , uint8_t *out) {
             }
         }
     }
-    
-    free(temp);
 #endif
+
+    free(temp);
 }
 
 void sh1106_render_buf(uint8_t *buf) {
@@ -143,7 +165,7 @@ void sh1106_render_buf(uint8_t *buf) {
 }
 
 void sh1106_set_pixel(uint8_t *buf, int x, int y, bool on) {
-    assert(x >= 0 && x < SH1106_ACTUAL_WIDTH && y >=0 && y < sh1106_HEIGHT);
+    assert(x >= 0 && x < DISP_WIDTH && y >=0 && y < DISP_HEIGHT);
 
     // The calculation to determine the correct bit to set depends on which address
     // mode we are in. This code assumes horizontal

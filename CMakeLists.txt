@@ -30,6 +30,8 @@ project(picozerotest C CXX ASM)
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
+find_package(Python3 REQUIRED)
+
 cmake_policy(SET CMP0169 OLD)
 FetchContent_Declare(
   freertos_kernel
@@ -88,3 +90,76 @@ target_link_libraries(picozerotest
         )
 
 pico_add_extra_outputs(picozerotest)
+
+
+# This horrific cmake abomination automatically generates .h files from images in the img/ directory and deletes any orphaned .h files
+# Thank you Claude for making the opportunity cost for creating such monstrosities so low.
+
+# Get a list of all image files in the img/ directory (e.g., PNGs)
+file(GLOB IMAGE_FILES
+    CONFIGURE_DEPENDS
+    ${CMAKE_CURRENT_LIST_DIR}/img/*)
+
+set(GENERATED_HEADERS)
+
+# Create a file to store the previous image list
+set(PREVIOUS_IMAGE_LIST ${CMAKE_CURRENT_BINARY_DIR}/previous_image_list.txt)
+
+# Read the previous image list
+if(EXISTS ${PREVIOUS_IMAGE_LIST})
+    file(STRINGS ${PREVIOUS_IMAGE_LIST} PREVIOUS_IMAGES)
+else()
+    set(PREVIOUS_IMAGES "")
+endif()
+
+# Compare current and previous image lists
+set(IMAGES_CHANGED FALSE)
+if(NOT "${IMAGE_FILES}" STREQUAL "${PREVIOUS_IMAGES}")
+    set(IMAGES_CHANGED TRUE)
+endif()
+
+# Update the previous image list file
+file(WRITE ${PREVIOUS_IMAGE_LIST} "${IMAGE_FILES}")
+
+# Make sure we run the cleanup script (once) if it's needed
+file(REMOVE ${CMAKE_CURRENT_BINARY_DIR}/.cleanup_dummy)
+
+# Loop over each image file and determine its corresponding .h file
+foreach(IMAGE_FILE ${IMAGE_FILES})
+    # Get the filename without the path or extension
+    get_filename_component(IMAGE_NAME_WE ${IMAGE_FILE} NAME_WE)
+    # Define the corresponding .h file in src/generated
+    set(HEADER_FILE ${CMAKE_CURRENT_LIST_DIR}/src/generated/${IMAGE_NAME_WE}.h)
+    list(APPEND GENERATED_HEADERS ${HEADER_FILE})
+    # Add a custom command for each image-to-header conversion
+    add_custom_command(
+        OUTPUT ${HEADER_FILE}
+        COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/image_to_array.py ${IMAGE_FILE} ${HEADER_FILE}
+        DEPENDS ${IMAGE_FILE} ${CMAKE_CURRENT_LIST_DIR}/image_to_array.py
+        COMMENT "Generating ${HEADER_FILE} from ${IMAGE_FILE}"
+    )
+endforeach()
+
+# Run cleanup script only if images have changed
+if(IMAGES_CHANGED)
+    add_custom_command(
+        COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/clean_generated.py ${CMAKE_CURRENT_LIST_DIR}/img ${CMAKE_CURRENT_LIST_DIR}/src/generated
+        COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_BINARY_DIR}/.cleanup_dummy
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/.cleanup_dummy
+        COMMENT "Cleaning up outdated .h files"
+    )
+    add_custom_target(run_cleanup DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/.cleanup_dummy)
+    add_dependencies(picozerotest run_cleanup)
+else()
+    add_custom_command(
+        COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_BINARY_DIR}/.cleanup_dummy
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/.cleanup_dummy
+    )
+endif()
+
+# Create the custom target to generate all headers
+add_custom_target(generate_images
+    DEPENDS ${GENERATED_HEADERS}
+)
+
+add_dependencies(picozerotest generate_images)

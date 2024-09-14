@@ -10,7 +10,8 @@
 #include "FreeRTOS_CLI.h"
 #include "task.h"
 
-#include "raspberry.h"
+#include "src/generated/raspberry.h"
+#include "src/generated/testimg2.h"
 #include "sh1106.h"
 #include "ws2812.pio.h"
 #include "disp_config.h"
@@ -211,14 +212,23 @@ void run_oled_display(__unused void* params) {
         // buf[SH1106_BUF_LEN-i-1] = 0b11000000;
         buf[DISP_BUF_LEN-i-1] = 0xFF;
 
+        // struct render_area area = {
+        //     start_col: 0,
+        //     end_col: 26-1,
+        //     start_page: 0,
+        //     end_page: (32 / DISP_PAGE_HEIGHT) - 1
+        // };
+
+        // sh1106_blit_data(buf, &area, raspberry26x32, 0, 0);
+
         struct render_area area = {
             start_col: 0,
-            end_col: 26-1,
+            end_col: 128-1,
             start_page: 0,
-            end_page: (32 / DISP_PAGE_HEIGHT) - 1
+            end_page: (64 / DISP_PAGE_HEIGHT) - 1
         };
 
-        sh1106_blit_data(buf, &area, raspberry26x32, 0, 0);
+        sh1106_blit_data(buf, &area, testimg2, 0, 0);
 
         sh1106_render_buf(buf);
         i++;
