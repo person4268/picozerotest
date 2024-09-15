@@ -37,7 +37,7 @@ find_package(Python3 REQUIRED)
 cmake_policy(SET CMP0169 OLD)
 FetchContent_Declare(
   freertos_kernel
-  GIT_REPOSITORY https://github.com/FreeRTOS/FreeRTOS-Kernel
+  GIT_REPOSITORY https://github.com/raspberrypi/FreeRTOS-Kernel
   GIT_TAG main # meh, idk why but using a sha didn't work on another machine
   GIT_SHALLOW TRUE
 )
@@ -54,7 +54,8 @@ include(${CMAKE_CURRENT_LIST_DIR}/FreeRTOS_Kernel_import.cmake)
 
 add_executable(picozerotest
   FreeRTOS-Plus-CLI/FreeRTOS_CLI.c
-  src/sh1106.cpp 
+  src/sh1106.cpp
+  src/gs_usb_task.cpp
   src/picozerotest.cpp
   src/usb_descriptors.c )
 
@@ -73,6 +74,11 @@ target_link_libraries(picozerotest
         pico_async_context_freertos
         FreeRTOS-Kernel-Heap4
         pico_stdlib)
+
+
+target_compile_options(picozerotest PUBLIC -Wno-narrowing)
+
+target_compile_definitions(picozerotest PUBLIC PICO_STDIO_USB_ENABLE_RESET_VIA_VENDOR_INTERFACE=1 PICO_STDIO_USB_RESET_INTERFACE_SUPPORT_MS_OS_20_DESCRIPTOR=0)
 
 # Add the standard include files to the build
 target_include_directories(picozerotest PRIVATE

@@ -52,10 +52,11 @@
 #endif
 
 #define TUD_RPI_RESET_DESC_LEN  9
+#define TUD_GS_USB_DESC_LEN     9 + 7 + 7
 #if !PICO_STDIO_USB_ENABLE_RESET_VIA_VENDOR_INTERFACE
-#define USBD_DESC_LEN (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN)
+#define USBD_DESC_LEN (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN + TUD_GS_USB_DESC_LEN)
 #else
-#define USBD_DESC_LEN (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN + TUD_RPI_RESET_DESC_LEN)
+#define USBD_DESC_LEN (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN + TUD_RPI_RESET_DESC_LEN + TUD_GS_USB_DESC_LEN)
 #endif
 #if !PICO_STDIO_USB_DEVICE_SELF_POWERED
 #define USBD_CONFIGURATION_DESCRIPTOR_ATTRIBUTE (0)
@@ -67,15 +68,17 @@
 
 #define USBD_ITF_CDC       (0) // needs 2 interfaces
 #if !PICO_STDIO_USB_ENABLE_RESET_VIA_VENDOR_INTERFACE
-#define USBD_ITF_MAX       (2)
+#define USBD_ITF_MAX       (3)
+#define USBD_ITF_GS_USB    (2)
 #else
 #define USBD_ITF_RPI_RESET (2)
-#define USBD_ITF_MAX       (3)
+#define USBD_ITF_GS_USB    (3)
+#define USBD_ITF_MAX       (4)
 #endif
 
-#define USBD_CDC_EP_CMD (0x81)
-#define USBD_CDC_EP_OUT (0x02)
-#define USBD_CDC_EP_IN (0x82)
+#define USBD_CDC_EP_CMD (0x82)
+#define USBD_CDC_EP_OUT (0x03)
+#define USBD_CDC_EP_IN (0x83)
 #define USBD_CDC_CMD_MAX_SIZE (8)
 #define USBD_CDC_IN_OUT_MAX_SIZE (64)
 
@@ -85,6 +88,7 @@
 #define USBD_STR_SERIAL (0x03)
 #define USBD_STR_CDC (0x04)
 #define USBD_STR_RPI_RESET (0x05)
+#define USBD_STR_GS_USB (0x06)
 
 // Note: descriptors returned from callbacks must exist long enough for transfer to complete
 
@@ -107,7 +111,34 @@ static const tusb_desc_device_t usbd_desc_device = {
 
 #define TUD_RPI_RESET_DESCRIPTOR(_itfnum, _stridx) \
   /* Interface */\
-  9, TUSB_DESC_INTERFACE, _itfnum, 0, 0, TUSB_CLASS_VENDOR_SPECIFIC, RESET_INTERFACE_SUBCLASS, RESET_INTERFACE_PROTOCOL, _stridx,
+  9, TUSB_DESC_INTERFACE, _itfnum, 0, 0, TUSB_CLASS_VENDOR_SPECIFIC, RESET_INTERFACE_SUBCLASS, RESET_INTERFACE_PROTOCOL, _stridx
+
+#define TUD_GS_USB_DESCRIPTOR(_itfnum, _stridx) \
+  /* Interface */\
+  9, /* Length */\
+  TUSB_DESC_INTERFACE, /* Descriptor type */\
+  _itfnum, /* Interface number */\
+  0, /* Alternate setting */\
+  2, /* Number of endpoints */\
+  TUSB_CLASS_VENDOR_SPECIFIC, /* Class */\
+  0xFF, /* Subclass */\
+  0xFF, /* Protocol */\
+  _stridx, /* String index */\
+  /* Endpoint 2 OUT */\
+  7, /* Length */\
+  TUSB_DESC_ENDPOINT, /* Descriptor type */\
+  0x02, /* Endpoint address */\
+  TUSB_XFER_BULK, /* Attributes */\
+  0x40, 0x00, /* Max packet size */\
+  0x00, /* Polling interval */\
+  /* Endpoint 1 IN */\
+  7, /* Length */\
+  TUSB_DESC_ENDPOINT, /* Descriptor type */\
+  0x81, /* Endpoint address */\
+  TUSB_XFER_BULK, /* Attributes */\
+  0x40, 0x00, /* Max packet size */\
+  0x00, /* Polling interval */
+
 
 static const uint8_t usbd_desc_cfg[USBD_DESC_LEN] = {
     TUD_CONFIG_DESCRIPTOR(1, USBD_ITF_MAX, USBD_STR_0, USBD_DESC_LEN,
@@ -117,8 +148,10 @@ static const uint8_t usbd_desc_cfg[USBD_DESC_LEN] = {
         USBD_CDC_CMD_MAX_SIZE, USBD_CDC_EP_OUT, USBD_CDC_EP_IN, USBD_CDC_IN_OUT_MAX_SIZE),
 
 #if PICO_STDIO_USB_ENABLE_RESET_VIA_VENDOR_INTERFACE
-    TUD_RPI_RESET_DESCRIPTOR(USBD_ITF_RPI_RESET, USBD_STR_RPI_RESET)
+    TUD_RPI_RESET_DESCRIPTOR(USBD_ITF_RPI_RESET, USBD_STR_RPI_RESET),
 #endif
+
+    TUD_GS_USB_DESCRIPTOR(USBD_ITF_GS_USB, USBD_STR_GS_USB)
 };
 
 static char usbd_serial_str[PICO_UNIQUE_BOARD_ID_SIZE_BYTES * 2 + 1];
@@ -131,6 +164,7 @@ static const char *const usbd_desc_str[] = {
 #if PICO_STDIO_USB_ENABLE_RESET_VIA_VENDOR_INTERFACE
     [USBD_STR_RPI_RESET] = "Reset",
 #endif
+    [USBD_STR_GS_USB] = "GS USB"
 };
 
 const uint8_t *tud_descriptor_device_cb(void) {
@@ -143,7 +177,7 @@ const uint8_t *tud_descriptor_configuration_cb(__unused uint8_t index) {
 
 const uint16_t *tud_descriptor_string_cb(uint8_t index, __unused uint16_t langid) {
 #ifndef USBD_DESC_STR_MAX
-#define USBD_DESC_STR_MAX (20)
+#define USBD_DESC_STR_MAX (40)
 #elif USBD_DESC_STR_MAX > 127
 #error USBD_DESC_STR_MAX too high (max is 127).
 #elif USBD_DESC_STR_MAX < 17

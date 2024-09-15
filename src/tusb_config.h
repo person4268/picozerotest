@@ -31,7 +31,6 @@
  extern "C" {
 #endif
 
-#define PICO_STDIO_USB_ENABLE_RESET_VIA_VENDOR_INTERFACE 1
 #include "pico/stdio_usb.h"
 
 // Enable Device stack
@@ -62,12 +61,15 @@
 // We use a vendor specific interface but with our own driver
 // Vendor driver only used for Microsoft OS 2.0 descriptor
 #if !PICO_STDIO_USB_RESET_INTERFACE_SUPPORT_MS_OS_20_DESCRIPTOR
-#define CFG_TUD_VENDOR            (0)
+#define CFG_TUD_VENDOR            (1) /* for gs usb */
 #else
-#define CFG_TUD_VENDOR            (1)
+#define CFG_TUD_VENDOR            (2)
+#error "yeah uh this aint gonna work"
+#endif
+
 #define CFG_TUD_VENDOR_RX_BUFSIZE  (256)
 #define CFG_TUD_VENDOR_TX_BUFSIZE  (256)
-#endif
+
 
 #ifdef __cplusplus
  }

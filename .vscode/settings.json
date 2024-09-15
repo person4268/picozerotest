@@ -39,6 +39,7 @@
     "C_Cpp.default.compilerPath": "/home/michael/.pico-sdk/toolchain/13_2_Rel1/bin/arm-none-eabi-gcc",
     "files.associations": {
         "reset_interface.h": "c",
-        "usb_reset_interface.h": "c"
+        "usb_reset_interface.h": "c",
+        "stdio_usb.h": "c"
     }
 }

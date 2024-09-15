@@ -10,6 +10,8 @@
 #include "FreeRTOS_CLI.h"
 #include "task.h"
 
+#include "gs_usb_task.h"
+
 #include "src/generated/raspberry.h"
 #include "src/generated/testimg1.h"
 #include "src/generated/testimg2.h"
@@ -229,7 +231,7 @@ void run_oled_display(__unused void* params) {
             start_col: 0,
             end_col: 128-1,
             start_page: 0 + i,
-            end_page: (uint8_t)(64 / DISP_PAGE_HEIGHT) - 1 + i
+            end_page: (64 / DISP_PAGE_HEIGHT) - 1 + i
         };
 
         sh1106_blit_data(buf, &area, testimg1, 0, 0);
@@ -258,12 +260,15 @@ int main()
     // TaskHandle_t task_handle_ws2812 = NULL;
     TaskHandle_t task_handle_oled_display = NULL;
     TaskHandle_t task_handle_tinyusb = NULL;
+    TaskHandle_t task_handle_gs_usb = NULL;
     xTaskCreate(main_task, "Main Task", 2048, NULL, 1, &task_handle_main_task);
     // xTaskCreate(runws2812, "run the ws2812 led lmao", 2048, NULL, 1, &task_handle_ws2812);
     xTaskCreate(run_oled_display, "Oled Disp", 2048, NULL, 1, &task_handle_oled_display);
     xTaskCreate(tinyusb_task, "TinyUSB", 2048, NULL, 1, &task_handle_tinyusb);
+    xTaskCreate(gs_usb_task, "GS USB", 2048, NULL, 1, &task_handle_gs_usb);
     vTaskCoreAffinitySet(task_handle_main_task, 1);
     vTaskCoreAffinitySet(task_handle_tinyusb, 1);
+    vTaskCoreAffinitySet(task_handle_gs_usb, 1);
     // vTaskCoreAffinitySet(task_handle_ws2812, 1);
     vTaskCoreAffinitySet(task_handle_oled_display, 0x01);
     vTaskStartScheduler();
