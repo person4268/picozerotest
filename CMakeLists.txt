@@ -146,7 +146,7 @@ foreach(IMAGE_FILE ${IMAGE_FILES})
     # Add a custom command for each image-to-header conversion
     add_custom_command(
         OUTPUT ${HEADER_FILE}
-        COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/image_to_array.py ${IMAGE_FILE} ${HEADER_FILE}
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/image_to_array.py ${IMAGE_FILE} ${HEADER_FILE}
         DEPENDS ${IMAGE_FILE} ${CMAKE_CURRENT_LIST_DIR}/image_to_array.py
         COMMENT "Generating ${HEADER_FILE} from ${IMAGE_FILE}"
     )
@@ -155,7 +155,7 @@ endforeach()
 # Run cleanup script only if images have changed
 if(IMAGES_CHANGED)
     add_custom_command(
-        COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/clean_generated.py ${CMAKE_CURRENT_LIST_DIR}/img ${CMAKE_CURRENT_LIST_DIR}/src/generated
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_LIST_DIR}/clean_generated.py ${CMAKE_CURRENT_LIST_DIR}/img ${CMAKE_CURRENT_LIST_DIR}/src/generated
         COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_BINARY_DIR}/.cleanup_dummy
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/.cleanup_dummy
         COMMENT "Cleaning up outdated .h files"
