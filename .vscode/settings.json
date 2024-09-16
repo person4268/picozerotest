@@ -41,6 +41,7 @@
         "reset_interface.h": "c",
         "usb_reset_interface.h": "c",
         "stdio_usb.h": "c",
-        "padsbank0.h": "c"
+        "padsbank0.h": "c",
+        "dreq.h": "c"
     }
 }

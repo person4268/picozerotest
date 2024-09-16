@@ -101,17 +101,6 @@ bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_requ
 
 static bool recv_thing = false;
 
-void tud_vendor_rx_cb(uint8_t itf, uint8_t const* buffer, uint16_t bufsize) {
-  recv_thing = true;
-  if(bufsize > sizeof(gs_host_frame)) {
-    // printf("wtf the buffer size is too large\n");
-    // return;
-  }
-  gs_host_frame *frame = (gs_host_frame*)buffer; // honestly idk
-  printf("Received frame: %d %d %d %d %d %d %d %d %d\n", frame->echo_id, frame->can_id, frame->can_dlc, frame->channel, frame->flags, frame->reserved, frame->data[0], frame->data[1], frame->data[2]);
-  return;
-}
-
 void tud_vendor_tx_cb(uint8_t itf, uint32_t sent_bytes) {
   printf("Sent %d bytes with interface %d\n", sent_bytes, itf);
 }

@@ -59,6 +59,7 @@ add_executable(picozerotest
   FreeRTOS-Plus-CLI/FreeRTOS_CLI.c
   can2040/can2040.c
   src/sh1106.cpp
+  src/can.cpp
   src/gs_usb_task.cpp
   src/picozerotest.cpp
   src/usb_descriptors.c )
@@ -105,6 +106,7 @@ target_link_libraries(picozerotest
         hardware_timer
         hardware_watchdog
         hardware_clocks
+        cmsis_core
         )
 
 pico_add_extra_outputs(picozerotest)

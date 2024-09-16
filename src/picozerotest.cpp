@@ -18,12 +18,14 @@
 #include "sh1106.h"
 #include "ws2812.pio.h"
 #include "disp_config.h"
+#include "consts.h"
+#include "can.h"
 
 #include "bsp/board_api.h"
 #include "tusb.h"
 
 static inline void put_pixel(uint32_t pixel_grb) {
-    pio_sm_put_blocking(pio0, 0, pixel_grb << 8u);
+    pio_sm_put_blocking(WS2812_PIO, 0, pixel_grb << 8u);
 }
 
 static inline uint32_t urgb_u32(uint8_t r, uint8_t g, uint8_t b) {
@@ -180,7 +182,7 @@ end:
 }
 
 void runws2812(__unused void* params) {
-    PIO pio = pio0;
+    PIO pio = WS2812_PIO;
     uint sm = 0;
     uint offset = pio_add_program(pio, &ws2812_program);
     uint pin = 16;
@@ -255,21 +257,25 @@ int main()
     board_init();
     tusb_init();
     stdio_init_all();
+    set_sys_clock_hz(CUR_SYS_CLK, true);
 
     TaskHandle_t task_handle_main_task = NULL;
     TaskHandle_t task_handle_ws2812 = NULL;
     TaskHandle_t task_handle_oled_display = NULL;
     TaskHandle_t task_handle_tinyusb = NULL;
     TaskHandle_t task_handle_gs_usb = NULL;
+    TaskHandle_t task_handle_can = NULL;
     xTaskCreate(main_task, "Main Task", 2048, NULL, 1, &task_handle_main_task);
     xTaskCreate(runws2812, "run the ws2812 led lmao", 2048, NULL, 1, &task_handle_ws2812);
     // xTaskCreate(run_oled_display, "Oled Disp", 2048, NULL, 1, &task_handle_oled_display);
     xTaskCreate(tinyusb_task, "TinyUSB", 2048, NULL, 1, &task_handle_tinyusb);
     xTaskCreate(gs_usb_task, "GS USB", 2048, NULL, 1, &task_handle_gs_usb);
+    xTaskCreate(can_task, "CAN", 2048, NULL, 1, &task_handle_can);
     vTaskCoreAffinitySet(task_handle_main_task, 1);
     vTaskCoreAffinitySet(task_handle_tinyusb, 1);
     vTaskCoreAffinitySet(task_handle_gs_usb, 1);
     vTaskCoreAffinitySet(task_handle_ws2812, 1);
+    vTaskCoreAffinitySet(task_handle_can, 1);
     // vTaskCoreAffinitySet(task_handle_oled_display, 0x01);
     vTaskStartScheduler();
 }
