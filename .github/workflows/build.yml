@@ -1,0 +1,59 @@
+name: Build Pico-ASHA
+
+on:
+    push:
+    pull_request:
+
+env:
+    PICO_SDK_COMMIT_HASH: efe2103f9b28458a1615ff096054479743ade236
+
+jobs:
+    build_picozerotest:
+        name: Build
+        runs-on: ubuntu-24.04
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                path: picozerotest
+            
+            - name: Cache Pico SDK
+              id: cache-pico-sdk
+              uses: actions/cache@v4
+              with:
+                path: pico-sdk
+                key: pico-sdk-${{ env.PICO_SDK_COMMIT_HASH }}
+
+            - name: Checkout Pico SDK
+              if: steps.cache-pico-sdk.outputs.cache-hit != 'true'
+              uses: actions/checkout@v4
+              with:
+                repository: raspberrypi/pico-sdk
+                path: pico-sdk
+                submodules: recursive
+                ref: "${{ env.PICO_SDK_COMMIT_HASH }}"
+
+            - name: Install dependencies
+              run: |
+                sudo apt-get update && sudo apt-get -y install cmake gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib
+            
+            - name: Set env variables
+              run: |
+                echo "PICO_SDK_PATH=$(realpath ./pico-sdk)" >> "$GITHUB_ENV"
+            
+            - name: Configure build
+              run: |
+                mkdir picozerotest/build
+                cd picozerotest/build
+                cmake -DCMAKE_BUILD_TYPE=MinSizeRel ..
+
+            - name: Compile
+              run: |
+                cd picozerotest/build
+                cmake --build .
+
+            - name: Upload UF2 and ELF binaries
+              uses: actions/upload-artifact@v4
+              with:
+                name: picozerotest-bin
+                path: picozerotest/build/picozerotest.[ue][fl][2f]
