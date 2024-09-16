@@ -74,7 +74,7 @@ void gs_breq_mode(uint8_t rhport, uint8_t stage, tusb_control_request_t const * 
 }
 
 
-bool ranOnce = false;
+static bool ranOnce = false;
 
 bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_request_t const * req) {
   /* So, gs_usb will try and claim the vendor interface for pico flashing and resetting when manually bound.
@@ -105,10 +105,11 @@ void tud_vendor_rx_cb(uint8_t itf, uint8_t const* buffer, uint16_t bufsize) {
   recv_thing = true;
   if(bufsize > sizeof(gs_host_frame)) {
     // printf("wtf the buffer size is too large\n");
-    return;
+    // return;
   }
   gs_host_frame *frame = (gs_host_frame*)buffer; // honestly idk
-  // printf("Received frame: %d %d %d %d %d %d %d %d %d\n", frame->echo_id, frame->can_id, frame->can_dlc, frame->channel, frame->flags, frame->reserved, frame->data[0], frame->data[1], frame->data[2]);
+  printf("Received frame: %d %d %d %d %d %d %d %d %d\n", frame->echo_id, frame->can_id, frame->can_dlc, frame->channel, frame->flags, frame->reserved, frame->data[0], frame->data[1], frame->data[2]);
+  return;
 }
 
 void tud_vendor_tx_cb(uint8_t itf, uint32_t sent_bytes) {
@@ -130,7 +131,16 @@ void gs_usb_task(__unused void *params) {
     // tud_vendor_n_write(0, &frame, sizeof(frame));
     // tud_vendor_n_write_flush(0);
     // vTaskDelay(500);
+    if(!tud_inited()) return;
     vTaskDelay(100);
+    // tud_vendor_n_read_flush(0);
+    if(uint32_t b = tud_vendor_n_available(0)) {
+      printf("we have data available!! it's about %d uint32_t's long\n", b);
+      struct gs_host_frame test_frame;
+      tud_vendor_n_read(0, &test_frame, sizeof(test_frame));
+      printf("Received! frame!: %d %d %d %d %d %d %d %d %d\n", test_frame.echo_id, test_frame.can_id, test_frame.can_dlc,
+      test_frame.channel, test_frame.flags, test_frame.reserved, test_frame.data[0], test_frame.data[1], test_frame.data[2]);
+    }
     if(recv_thing) {
       tud_vendor_n_write(0, &frame, sizeof(frame));
       tud_vendor_n_write_flush(0);
