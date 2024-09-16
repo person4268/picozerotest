@@ -31,6 +31,6 @@ echo "Binding ${FULL_DEVICE_PATH} to gs_usb driver"
 # Bind to the gs_usb driver
 echo -n "${VID} ${PID}" > /sys/bus/usb/drivers/gs_usb/new_id
 # echo -n "${FULL_DEVICE_PATH}" > /sys/bus/usb/drivers/gs_usb/bind
-echo -n "${BFDP}" > /sys/bus/drivers/gs_usb/unbind
+echo -n "${BFDP}" > /sys/bus/usb/drivers/gs_usb/unbind
 
 echo "Device bound to gs_usb driver"

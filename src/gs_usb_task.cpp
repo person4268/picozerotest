@@ -92,11 +92,28 @@ bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_requ
     case GS_USB_BREQ_BT_CONST: gs_breq_bt_const(rhport, stage, req); break;
     case GS_USB_BREQ_BITTIMING: gs_breq_bittiming(rhport, stage, req); break;
     case GS_USB_BREQ_MODE: gs_breq_mode(rhport, stage, req); break;
-    default: return false; // stall unsupported request
+    default:
+      printf("Unknown bRequest: %d %d %d %d\n", req->bRequest, req->wValue, req->wIndex, req->wLength);
+      return false;
   }
   return true;
 }
 
+static bool recv_thing = false;
+
+void tud_vendor_rx_cb(uint8_t itf, uint8_t const* buffer, uint16_t bufsize) {
+  recv_thing = true;
+  if(bufsize > sizeof(gs_host_frame)) {
+    // printf("wtf the buffer size is too large\n");
+    return;
+  }
+  gs_host_frame *frame = (gs_host_frame*)buffer; // honestly idk
+  // printf("Received frame: %d %d %d %d %d %d %d %d %d\n", frame->echo_id, frame->can_id, frame->can_dlc, frame->channel, frame->flags, frame->reserved, frame->data[0], frame->data[1], frame->data[2]);
+}
+
+void tud_vendor_tx_cb(uint8_t itf, uint32_t sent_bytes) {
+  printf("Sent %d bytes with interface %d\n", sent_bytes, itf);
+}
 
 static struct gs_host_frame frame = {
       .echo_id = 0xFFFFFFFF,
@@ -110,8 +127,15 @@ static struct gs_host_frame frame = {
 
 void gs_usb_task(__unused void *params) {
   while(1) {
-    tud_vendor_n_write(0, &frame, sizeof(frame));
-    tud_vendor_n_write_flush(0);
-    vTaskDelay(500);
+    // tud_vendor_n_write(0, &frame, sizeof(frame));
+    // tud_vendor_n_write_flush(0);
+    // vTaskDelay(500);
+    vTaskDelay(100);
+    if(recv_thing) {
+      tud_vendor_n_write(0, &frame, sizeof(frame));
+      tud_vendor_n_write_flush(0);
+      recv_thing = false;
+      printf("uhh we recieved something\n");
+    }
   }
 }
