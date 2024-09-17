@@ -1277,13 +1277,10 @@ can2040_check_transmit(struct can2040 *cd)
     return pending < ARRAY_SIZE(cd->tx_queue);
 }
 
-#include <stdio.h>
-
 // API function to transmit a message
 int
 can2040_transmit(struct can2040 *cd, struct can2040_msg *msg)
 {
-    printf("can2040_transmit enter\n");
     uint32_t tx_pull_pos = readl(&cd->tx_pull_pos);
     uint32_t tx_push_pos = cd->tx_push_pos;
     uint32_t pending = tx_push_pos - tx_pull_pos;
@@ -1304,8 +1301,6 @@ can2040_transmit(struct can2040 *cd, struct can2040_msg *msg)
         data_len = 0;
     qt->msg.data32[0] = qt->msg.data32[1] = 0;
     memcpy(qt->msg.data, msg->data, data_len);
-
-    printf("can2040_transmit before crc\n");
 
     // Calculate crc and stuff bits
     uint32_t crc = 0;
@@ -1338,18 +1333,12 @@ can2040_transmit(struct can2040 *cd, struct can2040_msg *msg)
     bs_pushraw(&bs, 1, 1);
     qt->stuffed_words = bs_finalize(&bs);
 
-    printf("can2040_transmit before tx_schedule_transmit\n");
-
     // Submit
     writel(&cd->tx_push_pos, tx_push_pos + 1);
-
-    printf("can2040_transmit before dmb, txpending\n");
 
     // Wakeup if in TS_IDLE state
     __DMB();
     pio_signal_set_txpending(cd);
-
-    printf("can2040_transmit before end\n");
 
     return 0;
 }

@@ -15,6 +15,7 @@
 #include "src/generated/raspberry.h"
 #include "src/generated/testimg1.h"
 #include "src/generated/testimg2.h"
+#include "src/generated/ROBOT.h"
 #include "sh1106.h"
 #include "ws2812.pio.h"
 #include "disp_config.h"
@@ -210,6 +211,10 @@ void run_oled_display(__unused void* params) {
     }
 
     uint8_t i = 0;
+    uint8_t* images[] = {testimg1, testimg2, ROBOT};
+    uint8_t images_len = sizeof(images) / sizeof(images[0]); // meh just assume everything is the same size
+    uint8_t image_cur = 0;
+    uint8_t c = 0;
     while(1) {
         // printf("Hello World! %u\n", i);
         //checkerboard pattern
@@ -236,10 +241,17 @@ void run_oled_display(__unused void* params) {
             end_page: (64 / DISP_PAGE_HEIGHT) - 1 + i
         };
 
-        sh1106_blit_data(buf, &area, testimg1, 0, 0);
+        sh1106_blit_data(buf, &area, images[image_cur], 0, 0);
 
         sh1106_render_buf(buf);
         i++;
+        c++;
+        if(c == 2) { // after 2 cycles, switch to the next image
+            c = 0;
+            i = 0;
+            image_cur++;
+            if(image_cur >= images_len) image_cur = 0;
+        }
         // if(i >= DISP_BUF_LEN) i = 0;
         if (i >= (TESTIMG1_HEIGHT / DISP_PAGE_HEIGHT) - DISP_PAGE_HEIGHT) i = 0;
         vTaskDelay(200);
