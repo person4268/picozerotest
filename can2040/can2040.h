@@ -84,7 +84,7 @@ struct can2040 {
     // Transmits
     uint32_t tx_state;
     uint32_t tx_pull_pos, tx_push_pos;
-    struct can2040_transmit tx_queue[4];
+    struct can2040_transmit tx_queue[4]; // changed: 4 -> 16
 };
 
 #ifdef __cplusplus

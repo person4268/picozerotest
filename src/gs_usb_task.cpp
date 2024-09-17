@@ -3,6 +3,7 @@
 #include "tusb.h"
 #include "FreeRTOS.h"
 #include "task.h"
+#include "can.h"
 
 struct gs_host_config config;
 struct gs_device_bittiming bt;
@@ -120,15 +121,25 @@ void gs_usb_task(__unused void *params) {
     // tud_vendor_n_write(0, &frame, sizeof(frame));
     // tud_vendor_n_write_flush(0);
     // vTaskDelay(500);
-    if(!tud_inited()) return;
-    vTaskDelay(100);
-    // tud_vendor_n_read_flush(0);
+    if(!tud_inited()) continue;
     if(uint32_t b = tud_vendor_n_available(0)) {
       printf("we have data available!! it's about %d uint32_t's long\n", b);
       struct gs_host_frame test_frame;
       tud_vendor_n_read(0, &test_frame, sizeof(test_frame));
+      tud_vendor_n_read_flush(0);
       printf("Received! frame!: %d %d %d %d %d %d %d %d %d\n", test_frame.echo_id, test_frame.can_id, test_frame.can_dlc,
       test_frame.channel, test_frame.flags, test_frame.reserved, test_frame.data[0], test_frame.data[1], test_frame.data[2]);
+      if(can_submit_tx()) {
+        struct can_msg msg = {
+          .id = test_frame.can_id,
+          .dlc = test_frame.can_dlc,
+          .data32 = {test_frame.data32[0], test_frame.data32[1]}
+        };
+        can_send_msg(&msg);
+        printf("okie we sent it\n");
+      } else {
+        printf("CAN TX queue full :(\n");
+      }
     }
     if(recv_thing) {
       tud_vendor_n_write(0, &frame, sizeof(frame));

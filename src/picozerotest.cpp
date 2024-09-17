@@ -211,7 +211,7 @@ void run_oled_display(__unused void* params) {
 
     uint8_t i = 0;
     while(1) {
-        printf("Hello World! %u\n", i);
+        // printf("Hello World! %u\n", i);
         //checkerboard pattern
         for(int i = 0; i < DISP_BUF_LEN; i++) {
             // buf[i] = i % 2 == 0 ? 0b10101010 : 0b01010101;
@@ -266,16 +266,16 @@ int main()
     TaskHandle_t task_handle_gs_usb = NULL;
     TaskHandle_t task_handle_can = NULL;
     xTaskCreate(main_task, "Main Task", 2048, NULL, 1, &task_handle_main_task);
-    xTaskCreate(runws2812, "run the ws2812 led lmao", 2048, NULL, 1, &task_handle_ws2812);
-    // xTaskCreate(run_oled_display, "Oled Disp", 2048, NULL, 1, &task_handle_oled_display);
+    // xTaskCreate(runws2812, "run the ws2812 led lmao", 2048, NULL, 1, &task_handle_ws2812);
+    xTaskCreate(run_oled_display, "Oled Disp", 2048, NULL, 1, &task_handle_oled_display);
     xTaskCreate(tinyusb_task, "TinyUSB", 2048, NULL, 1, &task_handle_tinyusb);
     xTaskCreate(gs_usb_task, "GS USB", 2048, NULL, 1, &task_handle_gs_usb);
     xTaskCreate(can_task, "CAN", 2048, NULL, 1, &task_handle_can);
     vTaskCoreAffinitySet(task_handle_main_task, 1);
     vTaskCoreAffinitySet(task_handle_tinyusb, 1);
     vTaskCoreAffinitySet(task_handle_gs_usb, 1);
-    vTaskCoreAffinitySet(task_handle_ws2812, 1);
+    // vTaskCoreAffinitySet(task_handle_ws2812, 1);
     vTaskCoreAffinitySet(task_handle_can, 1);
-    // vTaskCoreAffinitySet(task_handle_oled_display, 0x01);
+    vTaskCoreAffinitySet(task_handle_oled_display, 0x01);
     vTaskStartScheduler();
 }
