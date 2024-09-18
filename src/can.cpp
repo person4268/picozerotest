@@ -7,6 +7,7 @@
 #include "consts.h"
 #include "FreeRTOS.h"
 #include "task.h"
+#include "fifo.h"
 
 static struct can2040 cbus;
 
@@ -30,6 +31,9 @@ int can_send_msg(struct can_msg *msg) {
   return res;
 }
 
+static fifo_t can_recv_queue;
+static bool can_recv_notify = false;
+
 static void can2040_cb(struct can2040 *cd, uint32_t notify, struct can2040_msg *msg) {
   struct can_msg cmsg = {
     .id = msg->id,
@@ -39,6 +43,8 @@ static void can2040_cb(struct can2040 *cd, uint32_t notify, struct can2040_msg *
   switch(notify) {
     case CAN2040_NOTIFY_RX:
       // printf("CAN RX: %08X %08X %08X\n", cmsg.id, cmsg.data32[0], cmsg.data32[1]);
+      fifo_enqueue(&can_recv_queue, cmsg);
+      can_recv_notify = true;
       break;
     case CAN2040_NOTIFY_TX:
       // printf("CAN TX: %08X %08X %08X success\n", msg->id, msg->data32[0], msg->data32[1]);
@@ -56,6 +62,7 @@ static void PIOx_IRQHandler(void) {
 void can_task(void* params) {
   uint32_t bitrate = 1000000;
   uint32_t gpio_tx = 6, gpio_rx = 7;
+  fifo_init(&can_recv_queue);
 
   can2040_setup(&cbus, CAN2040_PIO_NUM);
   can2040_callback_config(&cbus, can2040_cb);
@@ -66,5 +73,13 @@ void can_task(void* params) {
 
   can2040_start(&cbus, CUR_SYS_CLK, bitrate, gpio_rx, gpio_tx);
 
-  while(1) {}
+  while(1) {
+    if(can_recv_notify == true) {
+      printf("we recieved some stuff (queue size is %d)\n", fifo_size(&can_recv_queue));
+      struct can_msg out = {0};
+      fifo_dequeue(&can_recv_queue, &out);
+      printf("CAN RX: %08X %08X %08X\n", out.id, out.data32[0], out.data32[1]);
+      can_recv_notify = false;
+    }
+  }
 }

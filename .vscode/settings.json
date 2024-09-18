@@ -43,6 +43,7 @@
         "stdio_usb.h": "c",
         "padsbank0.h": "c",
         "dreq.h": "c",
-        "iobank0.h": "c"
+        "iobank0.h": "c",
+        "queue": "cpp"
     }
 }
