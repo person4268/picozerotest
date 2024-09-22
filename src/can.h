@@ -11,5 +11,5 @@ struct can_msg {
 };
 
 void can_task(void* params);
-bool can_submit_tx();
+bool can_can_send_msg();
 int can_send_msg(struct can_msg *msg);

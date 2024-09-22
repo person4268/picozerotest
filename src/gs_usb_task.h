@@ -3,6 +3,7 @@
 #include "pico/stdlib.h"
 
 void gs_usb_task(void *params);
+void gs_usb_send_can_frame(struct can_msg *msg);
 
 enum gs_usb_breq {
     GS_USB_BREQ_HOST_FORMAT = 0,

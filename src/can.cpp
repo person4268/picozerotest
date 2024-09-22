@@ -8,12 +8,13 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "fifo.h"
+#include "gs_usb_task.h"
 
 static struct can2040 cbus;
 
 #define CAN_TX_QUEUE_LENGTH 64
 
-bool can_submit_tx() {
+bool can_can_send_msg() {
   return can2040_check_transmit(&cbus);
 }
 
@@ -79,6 +80,7 @@ void can_task(void* params) {
       struct can_msg out = {0};
       fifo_dequeue(&can_recv_queue, &out);
       printf("CAN RX: %08X %08X %08X\n", out.id, out.data32[0], out.data32[1]);
+      gs_usb_send_can_frame(&out);
       can_recv_notify = false;
     }
   }

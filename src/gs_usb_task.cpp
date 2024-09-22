@@ -5,9 +5,9 @@
 #include "task.h"
 #include "can.h"
 
-struct gs_host_config config;
-struct gs_device_bittiming bt;
-struct gs_device_mode mode;
+static struct gs_host_config config;
+static struct gs_device_bittiming bt;
+static struct gs_device_mode mode;
 
 static struct gs_device_config device_config = {
     .sw_version = 2,
@@ -30,7 +30,7 @@ static struct gs_device_bt_const bt_const = {
 
 
 /* We really don't care about the byte order since most assumes just LE only */
-void gs_breq_host_format(uint8_t rhport, uint8_t stage, tusb_control_request_t const * req) {
+static void gs_breq_host_format(uint8_t rhport, uint8_t stage, tusb_control_request_t const * req) {
   if(stage == CONTROL_STAGE_SETUP) {
     tud_control_xfer(rhport, req, &config, sizeof(config));
     return;
@@ -40,21 +40,21 @@ void gs_breq_host_format(uint8_t rhport, uint8_t stage, tusb_control_request_t c
   }
 }
 
-void gs_breq_device_config(uint8_t rhport, uint8_t stage, tusb_control_request_t const * req) {
+static void gs_breq_device_config(uint8_t rhport, uint8_t stage, tusb_control_request_t const * req) {
   if(stage == CONTROL_STAGE_SETUP) {
     tud_control_xfer(rhport, req, &device_config, sizeof(device_config));
     return;
   }
 }
 
-void gs_breq_bt_const(uint8_t rhport, uint8_t stage, tusb_control_request_t const * req) {
+static void gs_breq_bt_const(uint8_t rhport, uint8_t stage, tusb_control_request_t const * req) {
   if(stage == CONTROL_STAGE_SETUP) {
     tud_control_xfer(rhport, req, &bt_const, sizeof(bt_const));
     return;
   }
 }
 
-void gs_breq_bittiming(uint8_t rhport, uint8_t stage, tusb_control_request_t const * req) {
+static void gs_breq_bittiming(uint8_t rhport, uint8_t stage, tusb_control_request_t const * req) {
   if(stage == CONTROL_STAGE_SETUP) {
     tud_control_xfer(rhport, req, &bt, sizeof(bt));
     return;
@@ -64,7 +64,7 @@ void gs_breq_bittiming(uint8_t rhport, uint8_t stage, tusb_control_request_t con
   }
 }
 
-void gs_breq_mode(uint8_t rhport, uint8_t stage, tusb_control_request_t const * req) {
+static void gs_breq_mode(uint8_t rhport, uint8_t stage, tusb_control_request_t const * req) {
   if(stage == CONTROL_STAGE_SETUP) {
     tud_control_xfer(rhport, req, &mode, sizeof(mode));
     return;
@@ -106,22 +106,30 @@ void tud_vendor_tx_cb(uint8_t itf, uint32_t sent_bytes) {
   printf("Sent %d bytes with interface %d\n", sent_bytes, itf);
 }
 
+// so the way it works is we send out frames with echo_id -1 and we have to echo back frames we recieve with their own echo id to ack them.
+
 static struct gs_host_frame frame = {
-      .echo_id = 0xFFFFFFFF,
+      .echo_id = -1,
       .can_id = 0x123,
       .can_dlc = 8,
       .flags = 0,
       .reserved = 0,
       .data = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08}
-    };
+};
 
+void gs_usb_send_can_frame(struct can_msg *msg) {
+  frame.can_id = msg->id;
+  frame.can_dlc = msg->dlc;
+  frame.data32[0] = msg->data32[0];
+  frame.data32[1] = msg->data32[1];
+  tud_vendor_n_write(0, &frame, sizeof(frame));
+  tud_vendor_n_write_flush(0);
+}
 
 void gs_usb_task(__unused void *params) {
   while(1) {
-    // tud_vendor_n_write(0, &frame, sizeof(frame));
-    // tud_vendor_n_write_flush(0);
-    // vTaskDelay(500);
     if(!tud_inited()) continue;
+
     if(uint32_t b = tud_vendor_n_available(0)) {
       printf("we have data available!! it's about %d uint32_t's long\n", b);
       struct gs_host_frame test_frame;
@@ -129,23 +137,20 @@ void gs_usb_task(__unused void *params) {
       tud_vendor_n_read_flush(0);
       printf("Received! frame!: %d %d %d %d %d %d %d %d %d\n", test_frame.echo_id, test_frame.can_id, test_frame.can_dlc,
       test_frame.channel, test_frame.flags, test_frame.reserved, test_frame.data[0], test_frame.data[1], test_frame.data[2]);
-      if(can_submit_tx()) {
+      if(can_can_send_msg()) {
         struct can_msg msg = {
           .id = test_frame.can_id,
           .dlc = test_frame.can_dlc,
           .data32 = {test_frame.data32[0], test_frame.data32[1]}
         };
         can_send_msg(&msg);
+        // echo back
+        tud_vendor_n_write(0, &test_frame, sizeof(test_frame));
+        tud_vendor_n_write_flush(0);
         printf("okie we sent it\n");
       } else {
         printf("CAN TX queue full :(\n");
       }
-    }
-    if(recv_thing) {
-      tud_vendor_n_write(0, &frame, sizeof(frame));
-      tud_vendor_n_write_flush(0);
-      recv_thing = false;
-      printf("uhh we recieved something\n");
     }
   }
 }
