@@ -63,7 +63,8 @@ add_executable(picozerotest
   src/can.cpp
   src/gs_usb_task.cpp
   src/picozerotest.cpp
-  src/usb_descriptors.c )
+  src/usb_descriptors.c
+  src/rev.cpp )
 
 pico_set_program_name(picozerotest "picozerotest")
 pico_set_program_version(picozerotest "0.1")

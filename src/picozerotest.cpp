@@ -279,7 +279,7 @@ int main()
     TaskHandle_t task_handle_can = NULL;
     xTaskCreate(main_task, "Main Task", 2048, NULL, 1, &task_handle_main_task);
     // xTaskCreate(runws2812, "run the ws2812 led lmao", 2048, NULL, 1, &task_handle_ws2812);
-    xTaskCreate(run_oled_display, "Oled Disp", 2048, NULL, 1, &task_handle_oled_display);
+    // xTaskCreate(run_oled_display, "Oled Disp", 2048, NULL, 1, &task_handle_oled_display);
     xTaskCreate(tinyusb_task, "TinyUSB", 2048, NULL, 1, &task_handle_tinyusb);
     xTaskCreate(gs_usb_task, "GS USB", 2048, NULL, 1, &task_handle_gs_usb);
     xTaskCreate(can_task, "CAN", 2048, NULL, 1, &task_handle_can);
@@ -288,6 +288,6 @@ int main()
     vTaskCoreAffinitySet(task_handle_gs_usb, 1);
     // vTaskCoreAffinitySet(task_handle_ws2812, 1);
     vTaskCoreAffinitySet(task_handle_can, 1);
-    vTaskCoreAffinitySet(task_handle_oled_display, 0x01);
+    // vTaskCoreAffinitySet(task_handle_oled_display, 0x01);
     vTaskStartScheduler();
 }

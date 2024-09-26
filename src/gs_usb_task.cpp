@@ -4,6 +4,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "can.h"
+#include "rev.h"
 
 static struct gs_host_config config;
 static struct gs_device_bittiming bt;
@@ -75,7 +76,7 @@ static void gs_breq_mode(uint8_t rhport, uint8_t stage, tusb_control_request_t c
 }
 
 
-static bool ranOnce = false;
+static int runCount = 0;
 
 bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_request_t const * req) {
   /* So, gs_usb will try and claim the vendor interface for pico flashing and resetting when manually bound.
@@ -83,10 +84,17 @@ bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_requ
    * enumerated, we just y'know, play dumb and pretend we don't know what's going on so it gives up and leaves
    * us alone. Yes, this is a hack. No, it doesn't work 100% of the time.
   */
-  if(!ranOnce) {
-    ranOnce = true;
+
+ // okay sooooo gs_usb is now trying to eat even the CDC ADM INTERFACE FOR GODS SAKE
+#if PICO_STDIO_USB_ENABLE_RESET_VIA_VENDOR_INTERFACE
+  if(runCount < 2) {
+#else
+  if(runCount < 1) {
+#endif
+    runCount++;
     return false;
   }
+
   switch(req->bRequest) {
     case GS_USB_BREQ_HOST_FORMAT: gs_breq_host_format(rhport, stage, req); break;
     case GS_USB_BREQ_DEVICE_CONFIG: gs_breq_device_config(rhport, stage, req); break;
@@ -103,12 +111,12 @@ bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_requ
 static bool recv_thing = false;
 
 void tud_vendor_tx_cb(uint8_t itf, uint32_t sent_bytes) {
-  printf("Sent %d bytes with interface %d\n", sent_bytes, itf);
+  // printf("Sent %d bytes with interface %d\n", sent_bytes, itf);
 }
 
 // so the way it works is we send out frames with echo_id -1 and we have to echo back frames we recieve with their own echo id to ack them.
 
-static struct gs_host_frame frame = {
+static struct gs_host_frame [[gnu::packed]] frame = {
       .echo_id = -1,
       .can_id = 0x123,
       .can_dlc = 8,
@@ -127,29 +135,60 @@ void gs_usb_send_can_frame(struct can_msg *msg) {
 }
 
 void gs_usb_task(__unused void *params) {
+  gs_host_frame frame_buf[20] = {0};
   while(1) {
     if(!tud_inited()) continue;
 
     if(uint32_t b = tud_vendor_n_available(0)) {
-      printf("we have data available!! it's about %d uint32_t's long\n", b);
-      struct gs_host_frame test_frame;
-      tud_vendor_n_read(0, &test_frame, sizeof(test_frame));
-      tud_vendor_n_read_flush(0);
-      printf("Received! frame!: %d %d %d %d %d %d %d %d %d\n", test_frame.echo_id, test_frame.can_id, test_frame.can_dlc,
-      test_frame.channel, test_frame.flags, test_frame.reserved, test_frame.data[0], test_frame.data[1], test_frame.data[2]);
-      if(can_can_send_msg()) {
-        struct can_msg msg = {
-          .id = test_frame.can_id,
-          .dlc = test_frame.can_dlc,
-          .data32 = {test_frame.data32[0], test_frame.data32[1]}
-        };
-        can_send_msg(&msg);
-        // echo back
-        tud_vendor_n_write(0, &test_frame, sizeof(test_frame));
-        tud_vendor_n_write_flush(0);
-        printf("okie we sent it\n");
-      } else {
-        printf("CAN TX queue full :(\n");
+      // printf("we have data available!! it's about %d uint32_t's long\n", b);
+      // struct gs_host_frame test_frame;
+      // tud_vendor_n_read(0, &test_frame, sizeof(test_frame));
+      // tud_vendor_n_read_flush(0);
+      // // printf("Received! frame!: %d %d %d %d %d %d %d %d %d\n", test_frame.echo_id, test_frame.can_id, test_frame.can_dlc,
+      // // test_frame.channel, test_frame.flags, test_frame.reserved, test_frame.data[0], test_frame.data[1], test_frame.data[2]);
+      // if(can_can_send_msg()) {
+      //   struct can_msg msg = {
+      //     .id = test_frame.can_id,
+      //     .dlc = test_frame.can_dlc,
+      //     .data32 = {test_frame.data32[0], test_frame.data32[1]}
+      //   };
+      //   // can_send_msg(&msg);
+      //   rev_can_frame_callback(&msg);
+      //   // echo back
+      //   tud_vendor_n_write(0, &test_frame, sizeof(test_frame));
+      //   tud_vendor_n_write_flush(0);
+      //   // printf("okie we sent it\n");
+      // } else {
+      //   printf("CAN TX queue full :(\n");
+      // }
+
+      while(b > 0) {
+        uint32_t n_read = tud_vendor_n_read(0, &frame_buf, sizeof(frame_buf));
+        // tud_vendor_n_read_flush(0);
+        // printf("b: %d n_read: %d\n", b, n_read);
+        for(int i = 0; i < n_read / sizeof(gs_host_frame); i++) {
+          struct gs_host_frame *recvd_frame = &frame_buf[i];
+          recvd_frame->can_id = recvd_frame->can_id & 0b0001'1111'1111'1111'1111'1111'1111'1111; // can id is 29 bits
+          struct can_msg msg = {
+            .id = recvd_frame->can_id,
+            .dlc = recvd_frame->can_dlc,
+            .data32 = {recvd_frame->data32[0], recvd_frame->data32[1]}
+          };
+          if(can_can_send_msg()) {
+            // can_send_msg(&msg);
+          } else {
+            printf("CAN TX queue full :( dropping frame i guess...\n");
+          }
+
+          rev_can_frame_callback(&msg);
+          // printf("msg id (hex): %08X   data: %02X %02X %02X %02X %02X %02X %02X %02X\n", recvd_frame->can_id, msg.data[0], msg.data[1], msg.data[2], msg.data[3], msg.data[4], msg.data[5], msg.data[6], msg.data[7]);
+          // echo back
+          tud_vendor_n_write(0, recvd_frame, sizeof(struct gs_host_frame));
+          // printf("okie we sent it\n");
+
+          tud_vendor_n_write_flush(0);
+        }
+        b -= n_read;
       }
     }
   }
