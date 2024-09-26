@@ -137,11 +137,41 @@ static const CLI_Command_Definition_t xResetCommand =
     0
 };
 
+static BaseType_t prvRelayOffCommand(char* pcWriteBuffer, size_t xWriteBufferLen, const char* pcCommandString) {
+    printf("Turning off relay\n");
+    gpio_put(16, 0);
+    return pdFALSE;
+}
+
+static const CLI_Command_Definition_t xRelayOffCommand =
+{
+    "2",
+    "2: Turn off relay\r\n",
+    prvRelayOffCommand,
+    0
+};
+
+static BaseType_t prvRelayOnCommand(char* pcWriteBuffer, size_t xWriteBufferLen, const char* pcCommandString) {
+    printf("Turning on relay\n");
+    gpio_put(16, 1);
+    return pdFALSE;
+}
+
+static const CLI_Command_Definition_t xRelayOnCommand =
+{
+    "1",
+    "1: Turn on relay\r\n",
+    prvRelayOnCommand,
+    0
+};
+
 void main_task(__unused void* params) {
     // cli interpreter
     FreeRTOS_CLIRegisterCommand(&xTasksCommand);
     FreeRTOS_CLIRegisterCommand(&xBootromCommand);
     FreeRTOS_CLIRegisterCommand(&xResetCommand);
+    FreeRTOS_CLIRegisterCommand(&xRelayOffCommand);
+    FreeRTOS_CLIRegisterCommand(&xRelayOnCommand);
     vTaskDelay(2500);
     printf("\n\nOh god this is a serial console\n# ");
     char str[MAX_STRLEN] = {0xFF};
@@ -270,6 +300,9 @@ int main()
     tusb_init();
     stdio_init_all();
     set_sys_clock_hz(CUR_SYS_CLK, true);
+    gpio_set_dir(16, GPIO_OUT);
+    gpio_put(16, 0);
+    gpio_set_function(16, GPIO_FUNC_SIO);
 
     TaskHandle_t task_handle_main_task = NULL;
     TaskHandle_t task_handle_ws2812 = NULL;
