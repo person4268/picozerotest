@@ -342,7 +342,7 @@ int main()
     TaskHandle_t rev_fun = NULL;
     xTaskCreate(main_task, "Main Task", 2048, NULL, 1, &task_handle_main_task);
     // xTaskCreate(quadrature_testing_task, "Quadrature", 2048, NULL, 1, &task_handle_quadrature);
-    // xTaskCreate(runws2812, "run the ws2812 led lmao", 2048, NULL, 1, &task_handle_ws2812);
+    xTaskCreate(runws2812, "run the ws2812 led lmao", 2048, NULL, 1, &task_handle_ws2812);
     // xTaskCreate(run_oled_display, "Oled Disp", 2048, NULL, 1, &task_handle_oled_display);
     xTaskCreate(tinyusb_task, "TinyUSB", 2048, NULL, 1, &task_handle_tinyusb);
     xTaskCreate(gs_usb_task, "GS USB", 2048, NULL, 1, &task_handle_gs_usb);

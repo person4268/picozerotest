@@ -87,9 +87,11 @@ bool tud_vendor_control_xfer_cb(uint8_t rhport, uint8_t stage, tusb_control_requ
 
  // okay sooooo gs_usb is now trying to eat even the CDC ADM INTERFACE FOR GODS SAKE
 #if PICO_STDIO_USB_ENABLE_RESET_VIA_VENDOR_INTERFACE
-  if(runCount < 2) {
+  // if(runCount < 2) {
+  if (runCount < 1) { // tf i don't need to have it be 2 on my laptop??
 #else
-  if(runCount < 1) {
+  // if(runCount < 1) {
+  if (runCount < 0) {
 #endif
     runCount++;
     return false;
