@@ -71,6 +71,7 @@ pico_set_program_version(picozerotest "0.1")
 
 # Generate PIO header
 pico_generate_pio_header(picozerotest ${CMAKE_CURRENT_LIST_DIR}/src/ws2812.pio)
+pico_generate_pio_header(picozerotest ${CMAKE_CURRENT_LIST_DIR}/src/quadrature.pio)
 
 # Modify the below lines to enable/disable output over UART/USB
 pico_enable_stdio_uart(picozerotest 1)
