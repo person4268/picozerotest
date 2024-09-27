@@ -20,13 +20,15 @@
 #include "ws2812.pio.h"
 #include "disp_config.h"
 #include "consts.h"
+#include "rev.h"
 #include "can.h"
+#include "quadrature.pio.h"
 
 #include "bsp/board_api.h"
 #include "tusb.h"
 
 static inline void put_pixel(uint32_t pixel_grb) {
-    pio_sm_put_blocking(WS2812_PIO, 0, pixel_grb << 8u);
+    pio_sm_put_blocking(WS2812_PIO, 1, pixel_grb << 8u);
 }
 
 static inline uint32_t urgb_u32(uint8_t r, uint8_t g, uint8_t b) {
@@ -172,6 +174,7 @@ void main_task(__unused void* params) {
     FreeRTOS_CLIRegisterCommand(&xResetCommand);
     FreeRTOS_CLIRegisterCommand(&xRelayOffCommand);
     FreeRTOS_CLIRegisterCommand(&xRelayOnCommand);
+    rev_register_commands();
     vTaskDelay(2500);
     printf("\n\nOh god this is a serial console\n# ");
     char str[MAX_STRLEN] = {0xFF};
@@ -214,7 +217,7 @@ end:
 
 void runws2812(__unused void* params) {
     PIO pio = WS2812_PIO;
-    uint sm = 0;
+    uint sm = 1;
     uint offset = pio_add_program(pio, &ws2812_program);
     uint pin = 16;
     ws2812_program_init(pio, sm, offset, pin, 800000, false);
@@ -294,6 +297,31 @@ void tinyusb_task(__unused void* params) {
     }
 }
 
+
+void quadrature_testing_task(__unused void* params) {
+    gpio_init(6);
+    gpio_set_pulls(6, true, false);
+
+
+    int pos = 0;
+    bool clicked = false;
+    pio_add_program(pio0, &quadrature_encoder_program);
+    // pins 4 and 5
+    quadrature_encoder_program_init(pio0, 0, 4, 0);
+    while(1) {
+        int new_pos = quadrature_encoder_get_count(pio0, 0);
+        int new_clicked = !gpio_get(6);
+
+        if(new_pos != pos || new_clicked != clicked) {
+            pos = new_pos;
+            clicked = new_clicked;
+            printf("Position: %d Clicked: %d\n", pos, clicked);
+        }
+
+        vTaskDelay(50);
+    }
+}
+
 int main()
 {
     board_init();
@@ -310,16 +338,20 @@ int main()
     TaskHandle_t task_handle_tinyusb = NULL;
     TaskHandle_t task_handle_gs_usb = NULL;
     TaskHandle_t task_handle_can = NULL;
+    TaskHandle_t task_handle_quadrature = NULL;
+    TaskHandle_t rev_fun = NULL;
     xTaskCreate(main_task, "Main Task", 2048, NULL, 1, &task_handle_main_task);
+    // xTaskCreate(quadrature_testing_task, "Quadrature", 2048, NULL, 1, &task_handle_quadrature);
     // xTaskCreate(runws2812, "run the ws2812 led lmao", 2048, NULL, 1, &task_handle_ws2812);
     // xTaskCreate(run_oled_display, "Oled Disp", 2048, NULL, 1, &task_handle_oled_display);
     xTaskCreate(tinyusb_task, "TinyUSB", 2048, NULL, 1, &task_handle_tinyusb);
     xTaskCreate(gs_usb_task, "GS USB", 2048, NULL, 1, &task_handle_gs_usb);
     xTaskCreate(can_task, "CAN", 2048, NULL, 1, &task_handle_can);
+    xTaskCreate(rev_fun_task, "Rev Fun", 2048, NULL, 1, &rev_fun);
     vTaskCoreAffinitySet(task_handle_main_task, 1);
     vTaskCoreAffinitySet(task_handle_tinyusb, 1);
-    vTaskCoreAffinitySet(task_handle_gs_usb, 1);
-    // vTaskCoreAffinitySet(task_handle_ws2812, 1);
+    // vTaskCoreAffinitySet(task_handle_gs_usb, 1);
+    vTaskCoreAffinitySet(task_handle_ws2812, 1);
     vTaskCoreAffinitySet(task_handle_can, 1);
     // vTaskCoreAffinitySet(task_handle_oled_display, 0x01);
     vTaskStartScheduler();
