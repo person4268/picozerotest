@@ -1,6 +1,6 @@
 #define DISP_I2C (&i2c0_inst)
-#define DISP_I2C_SDA_PIN 4
-#define DISP_I2C_SCL_PIN 5
+#define DISP_I2C_SDA_PIN 14
+#define DISP_I2C_SCL_PIN 15
 
 #define DISP_I2C_ADDR 0x3C
 #define DISP_I2C_FREQ 400000

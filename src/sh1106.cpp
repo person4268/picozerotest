@@ -10,6 +10,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+#include <stdio.h>
 #include <cstdlib>
 #include <cstring>
 
@@ -19,7 +20,9 @@ void sh1106_send_cmd(uint8_t cmd) {
     // this "data" can be a command or data to follow up a command
     // Co = 1, D/C = 0 => the driver expects a command
     uint8_t buf[2] = {0x80, cmd};
-    i2c_write_blocking(i2c_default, DISP_I2C_ADDR, buf, 2, false);
+    printf("sending command %x\n", cmd);
+    i2c_write_blocking(DISP_I2C, DISP_I2C_ADDR, buf, 2, false);
+    printf("sent command\n");
 }
 
 void sh1106_send_buf(uint8_t buf[], int buflen) {
@@ -35,7 +38,7 @@ void sh1106_send_buf(uint8_t buf[], int buflen) {
     temp_buf[0] = 0x40;
     memcpy(temp_buf+1, buf, buflen);
     vTaskSuspendAll();
-    i2c_write_blocking(i2c_default, DISP_I2C_ADDR, temp_buf, buflen + 1, false);
+    i2c_write_blocking(DISP_I2C, DISP_I2C_ADDR, temp_buf, buflen + 1, false);
     xTaskResumeAll();
     free(temp_buf);
 }
@@ -47,12 +50,15 @@ void sh1106_send_cmd_list(uint8_t *buf, int num) {
 
 
 void sh1106_init() {
-    vTaskSuspendAll();
+    // vTaskSuspendAll();
     i2c_init(DISP_I2C, DISP_I2C_FREQ);
+    printf("i2c init\n");
     gpio_set_function(DISP_I2C_SDA_PIN, GPIO_FUNC_I2C);
     gpio_set_function(DISP_I2C_SCL_PIN, GPIO_FUNC_I2C);
+    printf("gpio set function\n");
     gpio_pull_up(DISP_I2C_SDA_PIN);
     gpio_pull_up(DISP_I2C_SCL_PIN);
+    printf("gpio pull up\n");
 
     // Init sequence
     uint8_t commands[] = {
@@ -74,10 +80,12 @@ void sh1106_init() {
         SH1106_SET_SCROLL | 0x00, // Disable scroll
         SH1106_SET_DISP | 0x01, // Turn display on
     };
+    printf("init sequence\n");
 
     sh1106_send_cmd_list(commands, count_of(commands));
+    printf("sent commands\n");
     
-    xTaskResumeAll();
+    // xTaskResumeAll();
 }
 
 void sh1106_set_all_white(bool on) {

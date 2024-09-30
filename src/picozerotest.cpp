@@ -230,6 +230,7 @@ void runws2812(__unused void* params) {
 }
 
 void run_oled_display(__unused void* params) {
+    vTaskDelay(5000);
     sh1106_init();
     vTaskDelay(1000);
 
@@ -299,8 +300,8 @@ void tinyusb_task(__unused void* params) {
 
 
 void quadrature_testing_task(__unused void* params) {
-    gpio_init(6);
-    gpio_set_pulls(6, true, false);
+    gpio_init(8);
+    gpio_set_pulls(8, true, false);
 
 
     int pos = 0;
@@ -310,7 +311,7 @@ void quadrature_testing_task(__unused void* params) {
     quadrature_encoder_program_init(pio0, 0, 4, 0);
     while(1) {
         int new_pos = quadrature_encoder_get_count(pio0, 0);
-        int new_clicked = !gpio_get(6);
+        int new_clicked = !gpio_get(8);
 
         if(new_pos != pos || new_clicked != clicked) {
             pos = new_pos;
@@ -341,9 +342,9 @@ int main()
     TaskHandle_t task_handle_quadrature = NULL;
     TaskHandle_t rev_fun = NULL;
     xTaskCreate(main_task, "Main Task", 2048, NULL, 1, &task_handle_main_task);
-    // xTaskCreate(quadrature_testing_task, "Quadrature", 2048, NULL, 1, &task_handle_quadrature);
+    xTaskCreate(quadrature_testing_task, "Quadrature", 2048, NULL, 1, &task_handle_quadrature);
     xTaskCreate(runws2812, "run the ws2812 led lmao", 2048, NULL, 1, &task_handle_ws2812);
-    // xTaskCreate(run_oled_display, "Oled Disp", 2048, NULL, 1, &task_handle_oled_display);
+    xTaskCreate(run_oled_display, "Oled Disp", 2048, NULL, 1, &task_handle_oled_display);
     xTaskCreate(tinyusb_task, "TinyUSB", 2048, NULL, 1, &task_handle_tinyusb);
     xTaskCreate(gs_usb_task, "GS USB", 2048, NULL, 1, &task_handle_gs_usb);
     xTaskCreate(can_task, "CAN", 2048, NULL, 1, &task_handle_can);
@@ -353,6 +354,6 @@ int main()
     // vTaskCoreAffinitySet(task_handle_gs_usb, 1);
     vTaskCoreAffinitySet(task_handle_ws2812, 1);
     vTaskCoreAffinitySet(task_handle_can, 1);
-    // vTaskCoreAffinitySet(task_handle_oled_display, 0x01);
+    vTaskCoreAffinitySet(task_handle_oled_display, 0x01);
     vTaskStartScheduler();
 }
