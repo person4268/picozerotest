@@ -1,13 +1,13 @@
 #pragma once
 
 
-#define SH1106_WIDTH 132
+#define SH1106_WIDTH 128
 #define SH1106_HEIGHT 64
 
 // One weird display I have needs have the left and right sides swapped.
 // I don't know if that's an issue with my particular display or if it's all SH1106es,
 // or if I messed something up.
-#define SH1106_MIDDLE_FLIP 1
+#define SH1106_MIDDLE_FLIP 0
 // idk in case your display is upside down
 #define SH1106_VERTICAL_FLIP 1 
 

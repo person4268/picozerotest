@@ -20,9 +20,7 @@ void sh1106_send_cmd(uint8_t cmd) {
     // this "data" can be a command or data to follow up a command
     // Co = 1, D/C = 0 => the driver expects a command
     uint8_t buf[2] = {0x80, cmd};
-    printf("sending command %x\n", cmd);
     i2c_write_blocking(DISP_I2C, DISP_I2C_ADDR, buf, 2, false);
-    printf("sent command\n");
 }
 
 void sh1106_send_buf(uint8_t buf[], int buflen) {
@@ -33,12 +31,13 @@ void sh1106_send_buf(uint8_t buf[], int buflen) {
     // copy our frame buffer into a new buffer because we need to add the control byte
     // to the beginning
     
-    uint8_t *temp_buf = (uint8_t*)malloc(buflen + 1);
+    uint8_t *temp_buf = (uint8_t*)malloc(buflen + 2);
 
     temp_buf[0] = 0x40;
     memcpy(temp_buf+1, buf, buflen);
+    temp_buf[buflen] = 0x00;
     vTaskSuspendAll();
-    i2c_write_blocking(DISP_I2C, DISP_I2C_ADDR, temp_buf, buflen + 1, false);
+    i2c_write_blocking(DISP_I2C, DISP_I2C_ADDR, temp_buf, buflen + 2, false);
     xTaskResumeAll();
     free(temp_buf);
 }
@@ -52,13 +51,10 @@ void sh1106_send_cmd_list(uint8_t *buf, int num) {
 void sh1106_init() {
     // vTaskSuspendAll();
     i2c_init(DISP_I2C, DISP_I2C_FREQ);
-    printf("i2c init\n");
     gpio_set_function(DISP_I2C_SDA_PIN, GPIO_FUNC_I2C);
     gpio_set_function(DISP_I2C_SCL_PIN, GPIO_FUNC_I2C);
-    printf("gpio set function\n");
     gpio_pull_up(DISP_I2C_SDA_PIN);
     gpio_pull_up(DISP_I2C_SCL_PIN);
-    printf("gpio pull up\n");
 
     // Init sequence
     uint8_t commands[] = {
@@ -80,10 +76,8 @@ void sh1106_init() {
         SH1106_SET_SCROLL | 0x00, // Disable scroll
         SH1106_SET_DISP | 0x01, // Turn display on
     };
-    printf("init sequence\n");
 
     sh1106_send_cmd_list(commands, count_of(commands));
-    printf("sent commands\n");
     
     // xTaskResumeAll();
 }
@@ -105,7 +99,7 @@ void sh1106_12864_to_13264_buf(uint8_t *in , uint8_t *out) {
     uint8_t* disp_flipped = (uint8_t*)malloc(DISP_BUF_LEN);
     memcpy(disp_flipped, in, DISP_BUF_LEN);
 
-#ifdef SH1106_VERTICAL_FLIP
+#if SH1106_VERTICAL_FLIP
     // now we flip the display vertically
     for (int i = 0; i < DISP_NUM_PAGES; i++) {
         for (int j = 0; j < DISP_WIDTH; j++) {
@@ -116,6 +110,7 @@ void sh1106_12864_to_13264_buf(uint8_t *in , uint8_t *out) {
 #endif
 
     // we need to add 4 columns to the sides, then swap the left and right halves
+#if SH1106_MIDDLE_FLIP
     memset(out, 0, SH1106_BUF_LEN);
     for (int i = 0; i < SH1106_NUM_PAGES; i++) {
         for (int j = 0; j < DISP_WIDTH; j++) {
@@ -124,12 +119,17 @@ void sh1106_12864_to_13264_buf(uint8_t *in , uint8_t *out) {
             out[out_idx] = disp_flipped[in_idx];
         }
     }
+#else
+    assert(DISP_BUF_LEN == SH1106_BUF_LEN);
+    memcpy(out, disp_flipped, DISP_BUF_LEN);
+#endif
 
     free(disp_flipped);
+
+#if SH1106_MIDDLE_FLIP
     uint8_t* temp = (uint8_t*)malloc(SH1106_BUF_LEN);
     memcpy(temp, out, SH1106_BUF_LEN);
 
-#ifdef SH1106_MIDDLE_FLIP
     // now we swap the left and right halves of out
     for (int i = 0; i < SH1106_NUM_PAGES; i++) {
         for (int j = 0; j < SH1106_WIDTH; j++) {
@@ -140,9 +140,9 @@ void sh1106_12864_to_13264_buf(uint8_t *in , uint8_t *out) {
             }
         }
     }
+    free(temp);
 #endif
 
-    free(temp);
 }
 
 void sh1106_render_buf(uint8_t *buf) {

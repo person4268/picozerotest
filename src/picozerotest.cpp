@@ -230,7 +230,6 @@ void runws2812(__unused void* params) {
 }
 
 void run_oled_display(__unused void* params) {
-    vTaskDelay(5000);
     sh1106_init();
     vTaskDelay(1000);
 
