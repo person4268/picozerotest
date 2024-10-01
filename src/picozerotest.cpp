@@ -255,6 +255,9 @@ void run_oled_display(__unused void* params) {
     bool last_clicked = false;
     int last_quad_pos = 0;
     float setpoint;
+    float kP;
+    float kI;
+    float kD;
     unsigned int mode = 0;
     const char* modes[] = {"Setpoint", "kP", "kI", "kD"};
     while(1) {
@@ -266,15 +269,22 @@ void run_oled_display(__unused void* params) {
         };
         calc_render_area_buflen(&area);
         memset(buf, 0, DISP_BUF_LEN);
-        std::string t = "pos:" + std::to_string(rev_get_position());
+        std::string t = "Setting: " + std::string{modes[mode]};
         ssd1306_write_str(buf, 0, 0, (char*) t.c_str());
-        t = "sp:" + std::to_string(setpoint);
+        t = "pos:" + std::to_string(rev_get_position());
         ssd1306_write_str(buf, 0, 8, (char*) t.c_str());
-        t = "err: " + std::to_string(rev_get_error());
+        t = "sp:" + std::to_string(setpoint);
         ssd1306_write_str(buf, 0, 16, (char*) t.c_str());
-        t = "vel: " + std::to_string(rev_get_velocity());
+        t = "err: " + std::to_string(rev_get_error());
         ssd1306_write_str(buf, 0, 24, (char*) t.c_str());
-        t = "Setting: " +std::string{modes[mode]};
+        t = "vel: " + std::to_string(rev_get_velocity());
+        ssd1306_write_str(buf, 0, 32, (char*) t.c_str());
+        t = "kp: " + std::to_string(kP);
+        ssd1306_write_str(buf, 0, 40, (char*) t.c_str());
+        t = "ki: " + std::to_string(kI);
+        ssd1306_write_str(buf, 0, 48, (char*) t.c_str());
+        t = "kd: " + std::to_string(kD);
+        ssd1306_write_str(buf, 0, 56, (char*) t.c_str());
         if(!last_clicked && quad_clicked) {
             mode ++;
             if(mode > 3) mode = 0;
@@ -283,6 +293,18 @@ void run_oled_display(__unused void* params) {
         if(mode == 0) {
             int diff = quad_pos - last_quad_pos;
             setpoint += (diff / 4.0) / 10.0; 
+        } else if(mode == 1) {
+            int diff = quad_pos - last_quad_pos;
+            kP += (diff / 4.0) / 10.0;
+            rev_set_kp(kP);
+        } else if(mode == 2) {
+            int diff = quad_pos - last_quad_pos;
+            kI += (diff / 4.0) / 10.0;
+            rev_set_ki(kI);
+        } else if(mode == 3) {
+            int diff = quad_pos - last_quad_pos;
+            kD += (diff / 4.0) / 10.0;
+            rev_set_kd(kD);
         }
 
         t = "mode " + std::to_string(mode);

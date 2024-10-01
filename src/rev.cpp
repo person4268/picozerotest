@@ -315,3 +315,27 @@ void rev_fun_task(__unused void* params) {
     }
   }
 }
+
+void rev_set_kp(float kp) {
+  pid_kp = kp;
+}
+
+void rev_set_ki(float ki) {
+  pid_ki = ki;
+}
+
+void rev_set_kd(float kd) {
+  pid_kd = kd;
+}
+
+float rev_get_kp() {
+  return pid_kp;
+}
+
+float rev_get_ki() {
+  return pid_ki;
+}
+
+float rev_get_kd() {
+  return pid_kd;
+}
