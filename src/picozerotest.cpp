@@ -233,6 +233,7 @@ void runws2812(__unused void* params) {
 #include <string>
 
 static int quad_pos = 0;
+static bool quad_clicked = false;
 
 void run_oled_display(__unused void* params) {
     disp_init();
@@ -251,6 +252,11 @@ void run_oled_display(__unused void* params) {
     disp_render_buf(buf);
 
     int i = 0;
+    bool last_clicked = false;
+    int last_quad_pos = 0;
+    float setpoint;
+    unsigned int mode = 0;
+    const char* modes[] = {"Setpoint", "kP", "kI", "kD"};
     while(1) {
         struct render_area area = {
             start_col: 0,
@@ -260,13 +266,30 @@ void run_oled_display(__unused void* params) {
         };
         calc_render_area_buflen(&area);
         memset(buf, 0, DISP_BUF_LEN);
-        std::string t = "pos " + std::to_string(quad_pos);
+        std::string t = "pos:" + std::to_string(rev_get_position());
         ssd1306_write_str(buf, 0, 0, (char*) t.c_str());
-        if(!gpio_get(8)) {
-            ssd1306_write_str(buf, 0, 8, "Button pressed");
-        } else {
-            ssd1306_write_str(buf, 0, 8, "Button not pressed");
+        t = "sp:" + std::to_string(setpoint);
+        ssd1306_write_str(buf, 0, 8, (char*) t.c_str());
+        t = "err: " + std::to_string(rev_get_error());
+        ssd1306_write_str(buf, 0, 16, (char*) t.c_str());
+        t = "vel: " + std::to_string(rev_get_velocity());
+        ssd1306_write_str(buf, 0, 24, (char*) t.c_str());
+        t = "Setting: " +std::string{modes[mode]};
+        if(!last_clicked && quad_clicked) {
+            mode ++;
+            if(mode > 3) mode = 0;
         }
+
+        if(mode == 0) {
+            int diff = quad_pos - last_quad_pos;
+            setpoint += (diff / 4.0) / 10.0; 
+        }
+
+        t = "mode " + std::to_string(mode);
+        ssd1306_write_str(buf, 0, 8, (char*) t.c_str());
+
+        last_clicked = quad_clicked;
+        last_quad_pos = quad_pos;
         ssd1306_render_buf(buf, &area);
     }
 }
@@ -287,16 +310,9 @@ void quadrature_testing_task(__unused void* params) {
     // pins 4 and 5
     quadrature_encoder_program_init(pio0, 0, 4, 0);
     while(1) {
-        int new_pos = quadrature_encoder_get_count(pio0, 0);
-        int new_clicked = !gpio_get(8);
-
-        if(new_pos != quad_pos || new_clicked != clicked) {
-            quad_pos = new_pos;
-            clicked = new_clicked;
-            printf("Position: %d Clicked: %d\n", quad_pos, clicked);
-        }
-
-        vTaskDelay(50);
+        quad_pos = -quadrature_encoder_get_count(pio0, 0);
+        quad_clicked = !gpio_get(8);
+        vTaskDelay(5);
     }
 }
 

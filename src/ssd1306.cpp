@@ -183,15 +183,6 @@ void ssd1306_blit_data(uint8_t* buf, struct render_area* source_area, uint8_t* d
     }
 }
 
-static inline int ssd1306_get_font_index(uint8_t ch) {
-    if (ch >= 'A' && ch <='Z') {
-        return  ch - 'A' + 1;
-    }
-    else if (ch >= '0' && ch <='9') {
-        return  ch - '0' + 27;
-    }
-    else return  0; // Not got that char so space.
-}
 
 static void ssd1306_write_char(uint8_t *buf, int16_t x, int16_t y, uint8_t ch) {
     if (x > SSD1306_WIDTH - 8 || y > SSD1306_HEIGHT - 8)
@@ -200,12 +191,11 @@ static void ssd1306_write_char(uint8_t *buf, int16_t x, int16_t y, uint8_t ch) {
     // For the moment, only write on Y row boundaries (every 8 vertical pixels)
     y = y/8;
 
-    ch = toupper(ch);
-    int idx = ssd1306_get_font_index(ch);
+    auto chr = font[ch];
     int fb_idx = y * 128 + x;
 
-    for (int i=0;i<8;i++) {
-        buf[fb_idx++] = font[idx * 8 + i];
+    for (int i=0;i<6;i++) {
+        buf[fb_idx++] = chr[i];
     }
 }
 
@@ -216,6 +206,6 @@ void ssd1306_write_str(uint8_t *buf, int16_t x, int16_t y, char *str) {
 
     while (*str) {
         ssd1306_write_char(buf, x, y, *str++);
-        x+=8;
+        x+=6;
     }
 }

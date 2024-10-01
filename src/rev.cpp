@@ -240,13 +240,67 @@ void rev_send_duty_cycle(int dev_num, float speed) {
 
 TickType_t lastHeartbeatTime = 0;
 TickType_t lastPrintTime = 0;
+
+static unsigned int motor_controller_id = 5;
+
+static float pid_setpoint = 0.0;
+static float pid_kp = 0.0;
+static float pid_ki = 0.0;
+static float pid_kd = 0.0;
+void pid_task(__unused void* params) {
+  unsigned int dt = 20;
+  float i_accum;
+  float last_error;
+  while(1) {
+    auto info = get_rev_motor_info(motor_controller_id);
+    if(info == NULL) {
+      vTaskDelay(pdMS_TO_TICKS(100));
+      continue;
+    }
+
+    float error = pid_setpoint - info->position;
+    i_accum += error * dt;
+    float p_term = error * pid_kp;
+    float i_term = i_accum * pid_ki;
+    float d_term = (error - last_error) / dt;
+    last_error = error;
+
+    float out = p_term + i_term + d_term;
+    out /= 12; // volts / rotation is more ergonomic than percent / rotation
+    rev_send_duty_cycle(motor_controller_id, out);
+    vTaskDelay(pdMS_TO_TICKS(dt));
+  }
+}
+
+float rev_get_position() {
+  auto info = get_rev_motor_info(motor_controller_id);
+  if(info == NULL) return 0.0;
+  return info->position;
+}
+
+float rev_get_velocity() {
+  auto info = get_rev_motor_info(motor_controller_id);
+  if(info == NULL) return 0.0;
+  return info->velocity;
+}
+
+float rev_get_error() {
+  auto info = get_rev_motor_info(motor_controller_id);
+  if(info == NULL) return 0.0;
+  return pid_setpoint - info->position;
+}
+
+void rev_set_setpoint(float setpoint) {
+  pid_setpoint = setpoint;
+}
+
 void rev_fun_task(__unused void* params) {
+  xTaskCreate(pid_task, "PID Task", 2048, NULL, 1, NULL);
   while(1) {
     if(heartbeat_enabled) {
       if(abs(xTaskGetTickCount() - lastHeartbeatTime) > pdMS_TO_TICKS(10)) {
         lastHeartbeatTime = xTaskGetTickCount();
-        rev_send_heartbeat(5);
-        rev_send_duty_cycle(5, 0.1);
+        rev_send_heartbeat(motor_controller_id);
       }
     }
     if(abs(xTaskGetTickCount() - lastPrintTime) > pdMS_TO_TICKS(200)) {
