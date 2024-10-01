@@ -31,14 +31,11 @@ void sh1106_send_buf(uint8_t buf[], int buflen) {
     // copy our frame buffer into a new buffer because we need to add the control byte
     // to the beginning
     
-    uint8_t *temp_buf = (uint8_t*)malloc(buflen + 2);
+    uint8_t *temp_buf = (uint8_t*)malloc(buflen + 1);
 
     temp_buf[0] = 0x40;
     memcpy(temp_buf+1, buf, buflen);
-    temp_buf[buflen] = 0x00;
-    vTaskSuspendAll();
-    i2c_write_blocking(DISP_I2C, DISP_I2C_ADDR, temp_buf, buflen + 2, false);
-    xTaskResumeAll();
+    i2c_write_blocking(DISP_I2C, DISP_I2C_ADDR, temp_buf, buflen + 1, false);
     free(temp_buf);
 }
 
@@ -49,7 +46,6 @@ void sh1106_send_cmd_list(uint8_t *buf, int num) {
 
 
 void sh1106_init() {
-    // vTaskSuspendAll();
     i2c_init(DISP_I2C, DISP_I2C_FREQ);
     gpio_set_function(DISP_I2C_SDA_PIN, GPIO_FUNC_I2C);
     gpio_set_function(DISP_I2C_SCL_PIN, GPIO_FUNC_I2C);
@@ -78,8 +74,6 @@ void sh1106_init() {
     };
 
     sh1106_send_cmd_list(commands, count_of(commands));
-    
-    // xTaskResumeAll();
 }
 
 void sh1106_set_all_white(bool on) {
@@ -161,8 +155,8 @@ void sh1106_render_buf(uint8_t *buf) {
     const int BytesPerRow = area.end_col - area.start_col + 1;
 
     for(int i = area.start_page; i <= area.end_page; i++) {
-        sh1106_send_cmd(SH1106_SET_COL_ADDR_LOW || (area.start_col & 0x0F));
-        sh1106_send_cmd(SH1106_SET_COL_ADDR_HIGH || ((area.start_col >> 4) & 0x0F));
+        sh1106_send_cmd(SH1106_SET_COL_ADDR_LOW || ((area.start_col) & 0x0F));
+        sh1106_send_cmd(SH1106_SET_COL_ADDR_HIGH || (((area.start_col) >> 4) & 0x0F));
         sh1106_send_cmd(SH1106_SET_PAGE_ADDR | (i & 0x0F));
         sh1106_send_cmd(SH1106_RMW_MODE); // increment column addr on write
         sh1106_send_buf(disp_buf + (i * BytesPerRow), BytesPerRow); // ugh, send a row at once

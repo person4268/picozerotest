@@ -17,6 +17,7 @@
 #include "src/generated/testimg2.h"
 #include "src/generated/ROBOT.h"
 #include "sh1106.h"
+#include "ssd1306.h"
 #include "ws2812.pio.h"
 #include "disp_config.h"
 #include "consts.h"
@@ -229,65 +230,44 @@ void runws2812(__unused void* params) {
     }
 }
 
+#include <string>
+
+static int quad_pos = 0;
+
 void run_oled_display(__unused void* params) {
-    sh1106_init();
+    disp_init();
     vTaskDelay(1000);
 
     uint8_t buf[DISP_BUF_LEN] = {0};
 
     // intro sequence: flash the screen 3 times
     for (int i = 0; i < 3; i++) {
-        sh1106_set_all_white(true);    // Set all pixels on
+        disp_set_all_white(true);    // Set all pixels on
         vTaskDelay(100);
-        sh1106_set_all_white(false); // go back to following RAM for pixel state
+        disp_set_all_white(false); // go back to following RAM for pixel state
         vTaskDelay(100);
     }
 
-    uint8_t i = 0;
-    uint8_t* images[] = {testimg1, testimg2, ROBOT};
-    uint8_t images_len = sizeof(images) / sizeof(images[0]); // meh just assume everything is the same size
-    uint8_t image_cur = 0;
-    uint8_t c = 0;
+    disp_render_buf(buf);
+
+    int i = 0;
     while(1) {
-        // printf("Hello World! %u\n", i);
-        //checkerboard pattern
-        for(int i = 0; i < DISP_BUF_LEN; i++) {
-            // buf[i] = i % 2 == 0 ? 0b10101010 : 0b01010101;
-            buf[i] = 0x00;
-        }
-        // buf[SH1106_BUF_LEN-i-1] = 0b11000000;
-        // buf[DISP_BUF_LEN-i-1] = 0xFF;
-
-        // struct render_area area = {
-        //     start_col: 0,
-        //     end_col: 26-1,
-        //     start_page: 0,
-        //     end_page: (32 / DISP_PAGE_HEIGHT) - 1
-        // };
-
-        // sh1106_blit_data(buf, &area, raspberry, 0, 0);
-
         struct render_area area = {
             start_col: 0,
-            end_col: 128-1,
-            start_page: 0 + i,
-            end_page: (64 / DISP_PAGE_HEIGHT) - 1 + i
+            end_col : DISP_WIDTH - 1,
+            start_page : 0,
+            end_page : DISP_NUM_PAGES - 1
         };
-
-        sh1106_blit_data(buf, &area, images[image_cur], 0, 0);
-
-        sh1106_render_buf(buf);
-        i++;
-        c++;
-        if(c == 2) { // after 2 cycles, switch to the next image
-            c = 0;
-            i = 0;
-            image_cur++;
-            if(image_cur >= images_len) image_cur = 0;
+        calc_render_area_buflen(&area);
+        memset(buf, 0, DISP_BUF_LEN);
+        std::string t = "pos " + std::to_string(quad_pos);
+        ssd1306_write_str(buf, 0, 0, (char*) t.c_str());
+        if(!gpio_get(8)) {
+            ssd1306_write_str(buf, 0, 8, "Button pressed");
+        } else {
+            ssd1306_write_str(buf, 0, 8, "Button not pressed");
         }
-        // if(i >= DISP_BUF_LEN) i = 0;
-        if (i >= (TESTIMG1_HEIGHT / DISP_PAGE_HEIGHT) - DISP_PAGE_HEIGHT) i = 0;
-        vTaskDelay(200);
+        ssd1306_render_buf(buf, &area);
     }
 }
 
@@ -302,8 +282,6 @@ void quadrature_testing_task(__unused void* params) {
     gpio_init(8);
     gpio_set_pulls(8, true, false);
 
-
-    int pos = 0;
     bool clicked = false;
     pio_add_program(pio0, &quadrature_encoder_program);
     // pins 4 and 5
@@ -312,10 +290,10 @@ void quadrature_testing_task(__unused void* params) {
         int new_pos = quadrature_encoder_get_count(pio0, 0);
         int new_clicked = !gpio_get(8);
 
-        if(new_pos != pos || new_clicked != clicked) {
-            pos = new_pos;
+        if(new_pos != quad_pos || new_clicked != clicked) {
+            quad_pos = new_pos;
             clicked = new_clicked;
-            printf("Position: %d Clicked: %d\n", pos, clicked);
+            printf("Position: %d Clicked: %d\n", quad_pos, clicked);
         }
 
         vTaskDelay(50);

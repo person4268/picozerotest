@@ -59,6 +59,7 @@ add_executable(picozerotest
   FreeRTOS-Plus-CLI/FreeRTOS_CLI.c
   can2040/can2040.c
   src/sh1106.cpp
+  src/ssd1306.cpp
   src/fifo.cpp
   src/can.cpp
   src/gs_usb_task.cpp
