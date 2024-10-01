@@ -15,7 +15,7 @@ enum frc_device_type {
   FIRMWARE_UPDATE = 31
 };
 
-const char* frc_device_type_names[] = {
+static const char* frc_device_type_names[] = {
   "Broadcast Messages",
   "Robot Controller",
   "Motor Controller",
@@ -53,7 +53,7 @@ enum frc_manufacturer {
   FRC_MANUFACTURER_RESERVED = 17 // Reserved range 17-255
 };
 
-const char* frc_manufacturer_names[] = {
+static const char* frc_manufacturer_names[] = {
   "Broadcast",
   "NI",
   "Luminary Micro",
@@ -130,7 +130,7 @@ enum SPARK_MAX_CAN_API {
 #include <map>
 #include <string>
 
-const std::map<enum SPARK_MAX_CAN_API, std::string> spark_max_can_api_names = {
+static const std::map<enum SPARK_MAX_CAN_API, std::string> spark_max_can_api_names = {
   {BROADCAST_DISABLE, "BROADCAST_DISABLE"},
   {BROADCAST_SYSTEM_HALT, "BROADCAST_SYSTEM_HALT"},
   {SETPOINT_SET, "SETPOINT_SET"},
@@ -177,11 +177,11 @@ const std::map<enum SPARK_MAX_CAN_API, std::string> spark_max_can_api_names = {
   {NON_ROBORIO_BROADCAST_NOT_A_COMMAND, "NON_ROBORIO_BROADCAST_NOT_A_COMMAND"}
 };
 
-bool is_valid_spark_max_can_api(int value) {
+static bool is_valid_spark_max_can_api(int value) {
   return spark_max_can_api_names.find((enum SPARK_MAX_CAN_API)value) != spark_max_can_api_names.end();
 }
 
-enum SPARK_MAX_CAN_API int_to_spark_max_can_api(int value, bool* success) {
+static enum SPARK_MAX_CAN_API int_to_spark_max_can_api(int value, bool* success) {
   if (is_valid_spark_max_can_api(value)) {
     if (success) *success = true;
     return (enum SPARK_MAX_CAN_API)value;
@@ -191,6 +191,6 @@ enum SPARK_MAX_CAN_API int_to_spark_max_can_api(int value, bool* success) {
   }
 }
 
-const char* get_spark_max_can_api_name(enum SPARK_MAX_CAN_API api) {
+static const char* get_spark_max_can_api_name(enum SPARK_MAX_CAN_API api) {
   return spark_max_can_api_names.at(api).c_str();
 }

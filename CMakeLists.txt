@@ -53,18 +53,27 @@ endif()
 set(FREERTOS_KERNEL_PATH ${freertos_kernel_SOURCE_DIR})
 include(${CMAKE_CURRENT_LIST_DIR}/FreeRTOS_Kernel_import.cmake)
 
+FetchContent_Declare(
+    u8g2
+    GIT_REPOSITORY https://github.com/olikraus/u8g2
+    GIT_TAG master
+    GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(u8g2)
+
 # Add executable. Default name is the project name, version 0.1
 
 add_executable(picozerotest
   FreeRTOS-Plus-CLI/FreeRTOS_CLI.c
   can2040/can2040.c
-  src/sh1106.cpp
   src/fifo.cpp
   src/can.cpp
   src/gs_usb_task.cpp
   src/picozerotest.cpp
   src/usb_descriptors.c
-  src/rev.cpp )
+  src/rev.cpp
+  src/u8g2_oled.cpp
+)
 
 pico_set_program_name(picozerotest "picozerotest")
 pico_set_program_version(picozerotest "0.1")
@@ -81,7 +90,9 @@ pico_enable_stdio_usb(picozerotest 1)
 target_link_libraries(picozerotest
         pico_async_context_freertos
         FreeRTOS-Kernel-Heap4
-        pico_stdlib)
+        pico_stdlib
+        u8g2
+)
 
 
 target_compile_options(picozerotest PUBLIC -Wno-narrowing)

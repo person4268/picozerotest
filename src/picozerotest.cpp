@@ -12,13 +12,8 @@
 
 #include "gs_usb_task.h"
 
-#include "src/generated/raspberry.h"
-#include "src/generated/testimg1.h"
-#include "src/generated/testimg2.h"
-#include "src/generated/ROBOT.h"
-#include "sh1106.h"
+#include "u8g2_oled.h"
 #include "ws2812.pio.h"
-#include "disp_config.h"
 #include "consts.h"
 #include "rev.h"
 #include "can.h"
@@ -229,68 +224,6 @@ void runws2812(__unused void* params) {
     }
 }
 
-void run_oled_display(__unused void* params) {
-    sh1106_init();
-    vTaskDelay(1000);
-
-    uint8_t buf[DISP_BUF_LEN] = {0};
-
-    // intro sequence: flash the screen 3 times
-    for (int i = 0; i < 3; i++) {
-        sh1106_set_all_white(true);    // Set all pixels on
-        vTaskDelay(100);
-        sh1106_set_all_white(false); // go back to following RAM for pixel state
-        vTaskDelay(100);
-    }
-
-    uint8_t i = 0;
-    uint8_t* images[] = {testimg1, testimg2, ROBOT};
-    uint8_t images_len = sizeof(images) / sizeof(images[0]); // meh just assume everything is the same size
-    uint8_t image_cur = 0;
-    uint8_t c = 0;
-    while(1) {
-        // printf("Hello World! %u\n", i);
-        //checkerboard pattern
-        for(int i = 0; i < DISP_BUF_LEN; i++) {
-            // buf[i] = i % 2 == 0 ? 0b10101010 : 0b01010101;
-            buf[i] = 0x00;
-        }
-        // buf[SH1106_BUF_LEN-i-1] = 0b11000000;
-        // buf[DISP_BUF_LEN-i-1] = 0xFF;
-
-        // struct render_area area = {
-        //     start_col: 0,
-        //     end_col: 26-1,
-        //     start_page: 0,
-        //     end_page: (32 / DISP_PAGE_HEIGHT) - 1
-        // };
-
-        // sh1106_blit_data(buf, &area, raspberry, 0, 0);
-
-        struct render_area area = {
-            start_col: 0,
-            end_col: 128-1,
-            start_page: 0 + i,
-            end_page: (64 / DISP_PAGE_HEIGHT) - 1 + i
-        };
-
-        sh1106_blit_data(buf, &area, images[image_cur], 0, 0);
-
-        sh1106_render_buf(buf);
-        i++;
-        c++;
-        if(c == 2) { // after 2 cycles, switch to the next image
-            c = 0;
-            i = 0;
-            image_cur++;
-            if(image_cur >= images_len) image_cur = 0;
-        }
-        // if(i >= DISP_BUF_LEN) i = 0;
-        if (i >= (TESTIMG1_HEIGHT / DISP_PAGE_HEIGHT) - DISP_PAGE_HEIGHT) i = 0;
-        vTaskDelay(200);
-    }
-}
-
 void tinyusb_task(__unused void* params) {
     while(1) {
         tud_task();
@@ -343,7 +276,7 @@ int main()
     xTaskCreate(main_task, "Main Task", 2048, NULL, 1, &task_handle_main_task);
     xTaskCreate(quadrature_testing_task, "Quadrature", 2048, NULL, 1, &task_handle_quadrature);
     xTaskCreate(runws2812, "run the ws2812 led lmao", 2048, NULL, 1, &task_handle_ws2812);
-    xTaskCreate(run_oled_display, "Oled Disp", 2048, NULL, 1, &task_handle_oled_display);
+    xTaskCreate(u8g2_test_task, "Oled Disp", 2048, NULL, 1, &task_handle_oled_display);
     xTaskCreate(tinyusb_task, "TinyUSB", 2048, NULL, 1, &task_handle_tinyusb);
     xTaskCreate(gs_usb_task, "GS USB", 2048, NULL, 1, &task_handle_gs_usb);
     xTaskCreate(can_task, "CAN", 2048, NULL, 1, &task_handle_can);

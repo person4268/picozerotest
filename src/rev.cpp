@@ -2,6 +2,7 @@
 #include "revconsts.h"
 #include <bit>
 #include <stdio.h>
+#include <cmath>
 #include <map>
 #include "FreeRTOS.h"
 #include "FreeRTOS-Plus-CLI/FreeRTOS_CLI.h"
@@ -110,11 +111,12 @@ void rev_can_frame_callback(struct can_msg* frame) {
   id.can_msg_id = frame->id;
   // 5 0 6 5 2
   // 5 1 6 5 2
-  const char* manu_name = frc_manufacturer_names[id.manufacturer_code];
-  const char* device_name = frc_device_type_names[id.device_type];
+  // const char* manu_name = frc_manufacturer_names[id.manufacturer_code];
+  // const char* device_name = frc_device_type_names[id.device_type];
   // printf("Received frame with id: %d %d %d %d %d\n", id.device_number, id.api_index, id.api_class, id.manufacturer_code, id.device_type);
   // printf("Received frame to/from %s's %s #%d. id %02x cl %02x API %s\n", manu_name, device_name, id.device_number, id.api_index, id.api_class, get_spark_max_can_api_name(int_to_spark_max_can_api(id.api, nullptr)));
-  enum SPARK_MAX_CAN_API api = int_to_spark_max_can_api(id.api, nullptr);
+  // enum SPARK_MAX_CAN_API api = int_to_spark_max_can_api(id.api, nullptr);
+  enum SPARK_MAX_CAN_API api = (enum SPARK_MAX_CAN_API)id.api;
   rev_data_frame_interpretations* data = (rev_data_frame_interpretations*)frame->data;
   auto pf0 = data->pf0;
   auto pf1 = data->pf1;
