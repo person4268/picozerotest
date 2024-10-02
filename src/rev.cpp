@@ -267,6 +267,7 @@ void pid_task(__unused void* params) {
 
     float out = p_term + i_term + d_term;
     out /= 12; // volts / rotation is more ergonomic than percent / rotation
+    out = std::max(-1.0f, std::min(1.0f, out));
     rev_send_duty_cycle(motor_controller_id, out);
     vTaskDelay(pdMS_TO_TICKS(dt));
   }
