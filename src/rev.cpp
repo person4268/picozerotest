@@ -259,10 +259,10 @@ void pid_task(__unused void* params) {
     }
 
     float error = pid_setpoint - info->position;
-    i_accum += error * dt;
+    i_accum += error * (dt / 1000.0);
     float p_term = error * pid_kp;
     float i_term = i_accum * pid_ki;
-    float d_term = (error - last_error) / dt;
+    float d_term = (error - last_error) / (dt / 1000.0);
     last_error = error;
 
     float out = p_term + i_term + d_term;

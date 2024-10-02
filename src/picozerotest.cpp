@@ -271,19 +271,19 @@ void run_oled_display(__unused void* params) {
         memset(buf, 0, DISP_BUF_LEN);
         std::string t = "Setting: " + std::string{modes[mode]};
         ssd1306_write_str(buf, 0, 0, (char*) t.c_str());
-        t = "pos:" + std::to_string(rev_get_position());
+        t = "Pos: " + std::to_string(rev_get_position());
         ssd1306_write_str(buf, 0, 8, (char*) t.c_str());
-        t = "sp:" + std::to_string(setpoint);
+        t = "Sp:  " + std::to_string(setpoint);
         ssd1306_write_str(buf, 0, 16, (char*) t.c_str());
-        t = "err: " + std::to_string(rev_get_error());
+        t = "Err: " + std::to_string(rev_get_error());
         ssd1306_write_str(buf, 0, 24, (char*) t.c_str());
-        t = "vel: " + std::to_string(rev_get_velocity());
+        t = "Vel: " + std::to_string(rev_get_velocity());
         ssd1306_write_str(buf, 0, 32, (char*) t.c_str());
-        t = "kp: " + std::to_string(kP);
+        t = "kP: " + std::to_string(kP);
         ssd1306_write_str(buf, 0, 40, (char*) t.c_str());
-        t = "ki: " + std::to_string(kI);
+        t = "kI: " + std::to_string(kI);
         ssd1306_write_str(buf, 0, 48, (char*) t.c_str());
-        t = "kd: " + std::to_string(kD);
+        t = "kD: " + std::to_string(kD);
         ssd1306_write_str(buf, 0, 56, (char*) t.c_str());
         if(!last_clicked && quad_clicked) {
             mode ++;
