@@ -262,12 +262,13 @@ void pid_task(__unused void* params) {
     i_accum += error * (dt / 1000.0);
     float p_term = error * pid_kp;
     float i_term = i_accum * pid_ki;
-    float d_term = (error - last_error) / (dt / 1000.0);
+    float d_term = pid_kd * ((error - last_error) / (dt / 1000.0));
     last_error = error;
 
     float out = p_term + i_term + d_term;
-    out /= 12; // volts / rotation is more ergonomic than percent / rotation
-    out = std::max(-1.0f, std::min(1.0f, out));
+    out /= 12.0f; // volts / rotation is more ergonomic than percent / rotation
+    out = std::max(-0.1f, std::min(0.3f, out));
+    printf("out: %f\n", out);
     rev_send_duty_cycle(motor_controller_id, out);
     vTaskDelay(pdMS_TO_TICKS(dt));
   }
@@ -296,7 +297,9 @@ void rev_set_setpoint(float setpoint) {
 }
 
 void rev_fun_task(__unused void* params) {
-  xTaskCreate(pid_task, "PID Task", 2048, NULL, 1, NULL);
+  TaskHandle_t pid_task_h;
+  xTaskCreate(pid_task, "PID Task", 2048, NULL, 1, &pid_task_h);
+  vTaskCoreAffinitySet(pid_task_h, 1);
   while(1) {
     if(heartbeat_enabled) {
       if(abs(xTaskGetTickCount() - lastHeartbeatTime) > pdMS_TO_TICKS(10)) {

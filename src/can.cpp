@@ -85,5 +85,6 @@ void can_task(void* params) {
       gs_usb_send_can_frame(&out);
       can_recv_notify = false;
     }
+    vTaskDelay(5);
   }
 }

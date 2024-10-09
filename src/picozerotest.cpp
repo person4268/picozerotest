@@ -293,6 +293,7 @@ void run_oled_display(__unused void* params) {
         if(mode == 0) {
             int diff = quad_pos - last_quad_pos;
             setpoint += (diff / 4.0) / 10.0; 
+            rev_set_setpoint(setpoint);
         } else if(mode == 1) {
             int diff = quad_pos - last_quad_pos;
             kP += (diff / 4.0) / 10.0;
@@ -303,12 +304,12 @@ void run_oled_display(__unused void* params) {
             rev_set_ki(kI);
         } else if(mode == 3) {
             int diff = quad_pos - last_quad_pos;
-            kD += (diff / 4.0) / 10.0;
+            kD += (diff / 4.0) / 160.0;
             rev_set_kd(kD);
         }
 
-        t = "mode " + std::to_string(mode);
-        ssd1306_write_str(buf, 0, 8, (char*) t.c_str());
+        // t = "mode " + std::to_string(mode);
+        // ssd1306_write_str(buf, 0, 8, (char*) t.c_str());
 
         last_clicked = quad_clicked;
         last_quad_pos = quad_pos;
@@ -366,9 +367,11 @@ int main()
     xTaskCreate(rev_fun_task, "Rev Fun", 2048, NULL, 1, &rev_fun);
     vTaskCoreAffinitySet(task_handle_main_task, 1);
     vTaskCoreAffinitySet(task_handle_tinyusb, 1);
-    // vTaskCoreAffinitySet(task_handle_gs_usb, 1);
+    vTaskCoreAffinitySet(task_handle_gs_usb, 1);
     vTaskCoreAffinitySet(task_handle_ws2812, 1);
     vTaskCoreAffinitySet(task_handle_can, 1);
     vTaskCoreAffinitySet(task_handle_oled_display, 0x01);
+    vTaskCoreAffinitySet(task_handle_quadrature, 0x01);
+    vTaskCoreAffinitySet(rev_fun, 0x01);
     vTaskStartScheduler();
 }
