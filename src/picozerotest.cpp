@@ -58,12 +58,6 @@ static const CLI_Command_Definition_t xResetCommand =
     0
 };
 
-static BaseType_t prvRelayOffCommand(char* pcWriteBuffer, size_t xWriteBufferLen, const char* pcCommandString) {
-    printf("Turning off relay\n");
-    gpio_put(16, 0);
-    return pdFALSE;
-}
-
 void main_task(__unused void* params) {
     // cli interpreter
     FreeRTOS_CLIRegisterCommand(&xTasksCommand);
