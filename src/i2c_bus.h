@@ -14,7 +14,7 @@ public:
     i2c_inst_t* bus = NULL;
     uint8_t sda;
     uint8_t scl;
-    bool isSoftware;
+    uint8_t isSoftware = 100;
 
     void init_impl_hardware();
     void init_impl_software();

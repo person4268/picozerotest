@@ -58,7 +58,7 @@ include(${CMAKE_CURRENT_LIST_DIR}/FreeRTOS_Kernel_import.cmake)
 add_executable(picozerotest
   FreeRTOS-Plus-CLI/FreeRTOS_CLI.c
   can2040/can2040.c
-  src/i2c_bus.h
+  src/i2c_bus.cpp
   src/mpr121.cpp
   src/picozerotest.cpp
   src/usb_descriptors.c

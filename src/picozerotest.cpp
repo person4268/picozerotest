@@ -1,6 +1,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <memory>
 
 #include "pico/stdlib.h"
 #include "pico/bootrom.h"
@@ -12,6 +13,9 @@
 
 #include "bsp/board_api.h"
 #include "tusb.h"
+
+#include "i2c_bus.h"
+#include "mpr121.h"
 
 static const int MAX_STRLEN = 200;
 char pcOutputString[configCOMMAND_INT_MAX_OUTPUT_SIZE];
@@ -63,7 +67,7 @@ void main_task(__unused void* params) {
     FreeRTOS_CLIRegisterCommand(&xTasksCommand);
     FreeRTOS_CLIRegisterCommand(&xBootromCommand);
     FreeRTOS_CLIRegisterCommand(&xResetCommand);
-    vTaskDelay(500);
+    vTaskDelay(1000);
     printf("\n\nOh god this is a serial console\n# ");
     char str[MAX_STRLEN] = {0xFF};
     int stri = 0;
@@ -109,6 +113,24 @@ void tinyusb_task(__unused void* params) {
     }
 }
 
+void electrode_task(__unused void* params) {
+    std::shared_ptr<i2c_bus> bus = std::make_shared<i2c_bus>(i2c0, 0, 1);
+    bus->init();
+    MPR121 mpr121(bus, 0);
+    vTaskDelay(2000);
+    printf("bruh moment!!\n");
+    if(!mpr121.init()) {
+        while(1) {
+            printf("Failed to initialize MPR121\n");
+            vTaskDelay(1000);
+        }
+    }
+    while(1) {
+        vTaskDelay(25);
+        printf("ELE0: %d\n", mpr121.readELE0());
+    }
+}
+
 int main()
 {
     board_init();
@@ -117,9 +139,12 @@ int main()
 
     TaskHandle_t task_handle_main_task = NULL;
     TaskHandle_t task_handle_tinyusb = NULL;
+    TaskHandle_t electrode_task_handle = NULL;
     xTaskCreate(main_task, "Main Task", 2048, NULL, 1, &task_handle_main_task);
     xTaskCreate(tinyusb_task, "TinyUSB", 2048, NULL, 1, &task_handle_tinyusb);
+    xTaskCreate(electrode_task, "Electrode Task", 2048, NULL, 1, &electrode_task_handle);
     vTaskCoreAffinitySet(task_handle_main_task, 1);
     vTaskCoreAffinitySet(task_handle_tinyusb, 1);
+    vTaskCoreAffinitySet(electrode_task_handle, 1);
     vTaskStartScheduler();
 }

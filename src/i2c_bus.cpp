@@ -35,7 +35,11 @@ void i2c_bus::init_impl_software() {
   // not implemented
 }
 
-void i2c_bus::read(uint8_t address, uint8_t* data, uint8_t length, bool nostop = false) {
+#include <stdio.h>
+#include <FreeRTOS.h>
+#include <task.h>
+
+void i2c_bus::read(uint8_t address, uint8_t* data, uint8_t length, bool nostop) {
   if (this->isSoftware) {
     read_impl_software(address, data, length, nostop);
   } else {
@@ -44,14 +48,14 @@ void i2c_bus::read(uint8_t address, uint8_t* data, uint8_t length, bool nostop =
 }
 
 void i2c_bus::read_impl_hardware(uint8_t address, uint8_t* data, uint8_t length, bool nostop) {
-  i2c_read_blocking(this->bus, address, data, length, nostop);
+  i2c_read_timeout_us(this->bus, address, data, length, nostop, 1000000);
 }
 
 void i2c_bus::read_impl_software(uint8_t address, uint8_t* data, uint8_t length, bool nostop) {
   // not implemented
 }
 
-void i2c_bus::write(uint8_t address, uint8_t* data, uint8_t length, bool nostop = false) {
+void i2c_bus::write(uint8_t address, uint8_t* data, uint8_t length, bool nostop) {
   if (this->isSoftware) {
     write_impl_software(address, data, length, nostop);
   } else {
@@ -60,7 +64,7 @@ void i2c_bus::write(uint8_t address, uint8_t* data, uint8_t length, bool nostop 
 }
 
 void i2c_bus::write_impl_hardware(uint8_t address, uint8_t* data, uint8_t length, bool nostop) {
-  i2c_write_blocking(this->bus, address, data, length, nostop);
+  i2c_write_timeout_us(this->bus, address, data, length, nostop, 1000000);
 }
 
 void i2c_bus::write_impl_software(uint8_t address, uint8_t* data, uint8_t length, bool nostop) {
